@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User description: "AI-Powered Internal Expense Fraud Demo — simulate employee expense activity, detect anomalous behavior with ML, and apply an AI investigation layer to analyze ambiguous cases."
 
+## Clarifications
+
+### Session 2026-05-06
+
+- Q: Should the "Investigate with AI" action be available on all cases, or only medium-confidence ones? → A: Available on all bands (high / medium / low); medium remains the suggested default focus but nothing is hidden.
+- Q: What is the default dataset size and the hard upper cap for a single simulation run? → A: Default 5,000 expense records; hard cap 50,000.
+- Q: What is the timeout threshold after which an AI investigation request is treated as a failure and the graceful fallback is shown? → A: 30 seconds (3× the SC-004 typical-latency target).
+- Q: How are datasets persisted across runs — single replaceable dataset, or session history? → A: Keep full session history of runs in a server-side data store (Azure Storage). Each "Generate dataset" creates a new Run; prior Runs remain inspectable. User authentication and per-user session scoping are deferred to a later phase — v1 stores Runs in a single shared scope.
+- Q: How configurable is the fraud-pattern mix — single intensity dial, per-pattern weights, or toggles? → A: One overall fraud-intensity dial **plus** per-pattern weights (normalized to 1.0) for each required pattern (threshold-gaming, unusual frequency, vendor anomaly).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Demonstrate the baseline → fraud uplift narrative (Priority: P1)
@@ -149,13 +159,16 @@ in the output, without restarting the app or modifying source files.
   app MUST stay interactive.
 - **AI returns malformed or off-schema output**: The system MUST treat this as an
   AI failure (graceful fallback), not as data to display.
-- **Re-running detection mid-investigation**: If the presenter regenerates the
-  dataset while an AI investigation is in flight, the in-flight result MUST be
-  discarded (or clearly marked as belonging to the prior dataset) and MUST NOT
-  attach to a different case in the new dataset.
-- **Very large dataset**: If the configured dataset size exceeds the system's
-  performance envelope (see SC-002), the system MUST cap or warn rather than
-  hanging the UI.
+- **Re-running detection mid-investigation**: If the presenter triggers a new
+  Generate while an AI investigation is in flight, the in-flight result MUST
+  remain attached to its **originating Run** (the prior Run, which is retained
+  in history per FR-022) and MUST NOT be attached to any case in the new Run.
+  The UI MUST clearly indicate which Run a displayed result belongs to.
+- **Very large dataset**: If the configured dataset size exceeds the hard cap
+  (50,000 records, FR-004), the system MUST clamp the value to the cap or
+  reject it with a clear user-visible message; the UI MUST NOT hang. Sizes
+  within the cap but beyond the SC-002 performance envelope MAY display a
+  warning before running.
 - **Concurrent presenters**: The demo is designed for a single interactive user at
   a time; behavior under concurrent multi-user load is out of scope (see
   Assumptions).
@@ -169,14 +182,23 @@ in the output, without restarting the app or modifying source files.
 - **FR-001**: The system MUST generate a synthetic dataset of employee profiles
   and expense activity, with most activity reflecting normal behavior.
 - **FR-002**: The system MUST inject configurable fraud patterns into the
-  generated data, including at minimum: threshold-gaming (expenses just under a
-  policy limit), unusual frequency (bursts of submissions), and vendor anomalies
-  (expenses to atypical or rarely-used vendors).
-- **FR-003**: The system MUST allow the fraud-injection intensity to be adjusted
-  dynamically (without restarting or editing code) and regenerate data on demand.
-- **FR-004**: The system MUST be able to produce datasets large enough to show
-  meaningful patterns (target: at least several thousand expense records per
-  simulation run).
+  generated data, including at minimum these three pattern types:
+  threshold-gaming (expenses just under a policy limit), unusual frequency
+  (bursts of submissions), and vendor anomalies (expenses to atypical or
+  rarely-used vendors). Each of these three patterns MUST be independently
+  weight-controllable (see FR-003).
+- **FR-003**: The system MUST expose two layers of fraud configurability that
+  can both be adjusted dynamically (without restarting or editing code):
+  (a) a single overall **fraud-intensity** control that scales the total
+  share of injected fraud, and (b) **per-pattern weights** for the three
+  required patterns, normalized to sum to 1.0 (the system MUST normalize
+  user-entered weights and reject negative values per FR-021). Regenerating
+  data MUST honor the current values of both controls.
+- **FR-004**: The system MUST produce datasets large enough to show meaningful
+  patterns. The default dataset size MUST be **5,000 expense records** per
+  simulation run, and the configured size MUST be capped at **50,000 records**
+  (hard upper limit). Requests above the cap MUST be rejected per FR-021 or
+  clamped with a clear user-visible warning per the Edge Cases section.
 
 #### Detection
 
@@ -198,8 +220,10 @@ in the output, without restarting the app or modifying source files.
 
 #### AI investigation
 
-- **FR-010**: The system MUST route medium-confidence cases (and only those, by
-  default) to an AI agent for further investigation, on user request.
+- **FR-010**: The system MUST allow the user to invoke the AI agent on **any**
+  case regardless of confidence band (high, medium, or low). The UI SHOULD
+  surface medium-confidence cases as the suggested default focus for AI
+  investigation, but MUST NOT hide or disable the action on other bands.
 - **FR-011**: When invoking the AI agent, the system MUST supply structured
   context for the case, including the case's behavioral signals, relevant
   history (e.g., the employee's prior activity), and peer comparisons.
@@ -207,14 +231,15 @@ in the output, without restarting the app or modifying source files.
   output containing: a fraud-likelihood assessment, supporting reasoning in
   human-readable prose, an enumerated list of key contributing signals, and a
   recommended action.
-- **FR-013**: The system MUST persist the AI's verdict and rationale for the
-  duration of the current session so that re-opening a previously investigated
-  case does not require a new AI call.
+- **FR-013**: The system MUST persist every AI verdict and rationale alongside
+  the Run it belongs to (see FR-022) so that re-opening a previously
+  investigated case — in the current session or a later one — does not
+  require a new AI call.
 - **FR-014**: The system MUST degrade gracefully when the AI service is
-  unavailable, slow beyond a reasonable timeout, or returns malformed output:
-  the application MUST stay responsive, the affected case MUST clearly indicate
-  AI unavailability, and deterministic detection output for the case MUST remain
-  visible.
+  unavailable, when an AI request exceeds **30 seconds** without returning a
+  parseable response, or when the response is malformed: the application MUST
+  stay responsive, the affected case MUST clearly indicate AI unavailability,
+  and deterministic detection output for the case MUST remain visible.
 
 #### Presentation & interaction
 
@@ -234,11 +259,32 @@ in the output, without restarting the app or modifying source files.
 
 #### Configuration
 
-- **FR-020**: All tunable parameters (fraud intensity, fraud-pattern mix,
-  dataset size, decision thresholds, and any AI-agent inputs such as model
-  deployment name) MUST be configurable at runtime without source-code changes.
+- **FR-020**: All tunable parameters (overall fraud intensity, per-pattern
+  weights, dataset size, decision thresholds, and any AI-agent inputs such as
+  model deployment name) MUST be configurable at runtime without source-code
+  changes.
 - **FR-021**: Invalid configuration values MUST be rejected with a clear,
   user-visible message; the system MUST retain the last known valid state.
+
+#### Persistence & history
+
+- **FR-022**: Each "Generate dataset" action MUST create a new **Run** record
+  in a server-side data store, and that Run MUST persist across application
+  restarts. A Run MUST capture: the Simulation Configuration used, the
+  generated Expense Records, the Detection Results, and any AI Investigation
+  Results subsequently attached to it.
+- **FR-023**: The server-side data store MUST be Azure Storage (concrete
+  service — e.g., Blob, Table, or a combination — chosen at planning time).
+  No per-user authentication or per-user scoping is required for v1; all Runs
+  share a single tenant/scope.
+- **FR-024**: The UI MUST allow the presenter to list prior Runs, open any
+  prior Run for inspection (case list, detail view, AI verdicts), and identify
+  which Run is currently active. Generating a new Run MUST NOT delete prior
+  Runs.
+- **FR-025**: User authentication and per-user session scoping of Runs are
+  **explicitly deferred** to a later phase and are out of scope for v1. The
+  v1 design MUST NOT preclude adding them later (e.g., the data model SHOULD
+  carry an owner/session identifier even if it is a constant in v1).
 
 ### Key Entities
 
@@ -258,7 +304,13 @@ in the output, without restarting the app or modifying source files.
   for a single Case — verdict, rationale, contributing signals, recommended
   action, plus a marker for whether the investigation succeeded or fell back.
 - **Simulation Configuration**: The tunable parameter set (fraud intensity,
-  pattern mix, dataset size, thresholds, AI inputs) that governs a run.
+  pattern mix, dataset size, thresholds, AI inputs) that governs a Run.
+- **Run**: A persisted record of one "Generate dataset" execution. Bundles a
+  Simulation Configuration + the generated Expense Records + their Detection
+  Results + any AI Investigation Results attached to cases in that Run, plus
+  metadata (timestamp, identifier, owner placeholder for future per-user
+  scoping). Runs are stored server-side in Azure Storage (FR-022, FR-023) and
+  survive across application restarts.
 
 ## Success Criteria *(mandatory)*
 
@@ -267,9 +319,11 @@ in the output, without restarting the app or modifying source files.
 - **SC-001**: A presenter can run the full Story 1 narrative (low-fraud generate
   → detect → high-fraud generate → detect → see uplift) end-to-end in under
   three minutes during a live demo.
-- **SC-002**: For datasets of at least several thousand expense records, the
-  generate-and-detect cycle completes in a few seconds (target: ≤ 5 seconds
-  perceived) so the demo flow does not stall.
+- **SC-002**: For datasets at the **default size of 5,000 records**, the
+  generate-and-detect cycle completes in ≤ 5 seconds perceived on a typical
+  presenter laptop, so the demo flow does not stall. At the hard cap (50,000
+  records) the cycle SHOULD remain interactive (no UI freeze), even if total
+  duration grows.
 - **SC-003**: Non-AI UI interactions (selecting a case, adjusting a parameter,
   viewing a detail panel) feel responsive in a live setting (target: under one
   second perceived latency).
@@ -296,17 +350,20 @@ in the output, without restarting the app or modifying source files.
 ## Assumptions
 
 - **Single interactive user**: The demo is operated by one presenter at a time.
-  Multi-tenant or concurrent-presenter scenarios are out of scope.
+  Multi-tenant or concurrent-presenter scenarios are out of scope. The data
+  model SHOULD nonetheless carry an owner/session identifier (FR-025) so
+  per-user scoping can be added later without a migration.
 - **No authentication / access control on the demo UI**: This is a demonstration
   application, not a production fraud system. The UI does not need login or RBAC
   for end users; backend service-to-service identity is governed separately by
   the project constitution (Managed Identity, RBAC in Bicep).
 - **Synthetic data only**: All employee profiles and expense activity are
   generated by the application. No real personal or financial data is ingested.
-- **Ephemeral data lifecycle**: A new "Generate dataset" action replaces the
-  prior dataset. The system is not required to persist historical runs across
-  sessions; AI investigation results persist only for the duration of the
-  current session (FR-013).
+- **Persistent run history (server-side)**: Each "Generate dataset" creates a
+  new **Run** that is stored in Azure Storage and survives application
+  restarts (FR-022–FR-024). All Runs share a single tenant in v1; per-user
+  scoping is deferred (FR-025). AI investigation results are retained as part
+  of their originating Run.
 - **AI investigation is on-demand, not bulk**: The AI agent is invoked on
   individual medium-confidence cases selected by the presenter, not on every
   case in a run. This keeps the demo within typical AI latency and quota

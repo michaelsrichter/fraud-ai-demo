@@ -32,13 +32,16 @@
 ## Notes
 
 - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`
-- Validation iteration: 1 of 3 — all items pass on first pass.
+- Validation iteration: 2 of 3 — re-validated after `/speckit.clarify` session 2026-05-06 (5 questions answered, FR-022–FR-025 added, Run entity added, FR-002/003/010/013/014/020 + Edge Cases + Assumptions + SC-002 updated). All items still pass.
 - Notes on judgment calls during validation:
   - "Static web application frontend" and "Azure Functions on .NET isolated runtime"
     are deliberately *not* mentioned in spec.md; those constraints live in the
     project constitution and will be enforced at the `/speckit.plan` Constitution
     Check gate, keeping the spec technology-agnostic.
+  - **Azure Storage** is named in FR-023 because the user explicitly chose it as
+    a product-level requirement (server-side, with future per-user auth) — it
+    is treated as a domain decision, not implementation detail.
   - Bands "high / medium / low confidence" are treated as domain language from the
     user's brief, not implementation detail.
-  - Soft latency targets ("a few seconds", "≤ 5 seconds perceived") are user-visible
-    SLOs from the user's stated demo expectations, not implementation constraints.
+  - Soft latency targets ("a few seconds", "≤ 5 seconds perceived", "30 second
+    AI timeout") are user-visible SLOs, not implementation constraints.
