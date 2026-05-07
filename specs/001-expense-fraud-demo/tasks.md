@@ -11,7 +11,7 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 **Organization**: Tasks are grouped by user story so each story can be implemented, tested, and demoed independently.
 
-## Format: `- [ ] [TaskID] [P?] [Story?] Description`
+## Format: `- [X] [TaskID] [P?] [Story?] Description`
 
 - **[P]**: Parallelizable — touches different files and has no incomplete dependencies
 - **[Story]**: `[US1]` … `[US4]` — only on user-story-phase tasks; never on Setup, Foundational, or Polish
@@ -105,11 +105,11 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Backend tests for User Story 1 (write FIRST, must FAIL before implementation)
 
-- [ ] T031 [P] [US1] In `backend/tests/unit/Application.Tests/FraudInjectorTests.cs` — given a fixed seed, intensity, and weights, the injector marks the expected share of records and respects per-pattern weights (asserts FR-002, FR-003)
-- [ ] T032 [P] [US1] In `backend/tests/unit/Application.Tests/AnomalyScorerTests.cs` — `IAnomalyScorer` produces deterministic `Confidence ∈ [0,1]` for the same seed; identical input twice returns equal scores (asserts FR-006, FR-007, deterministic-detection assumption)
-- [ ] T033 [P] [US1] In `backend/tests/unit/Application.Tests/BandAssignmentTests.cs` — confidences map to bands per `BandThresholds`; boundary values land in the correct band (asserts FR-008, FR-009)
-- [ ] T034 [P] [US1] In `backend/tests/unit/Application.Tests/GenerateRunHandlerTests.cs` — orchestrator wires injector → scorer → banding → repository.SaveAsync; uses Moq for all collaborators (asserts FR-022, FR-005)
-- [ ] T035 [P] [US1] In `backend/tests/unit/Infrastructure.Tests/BlobRunRepositoryTests.cs` — using Azurite (Testcontainers or local emulator), `SaveAsync` writes a gzip blob and a `RunIndex` table row; `LoadAsync` round-trips equality; concurrent save with stale ETag throws (asserts FR-023, FR-024, research §R3, §R4)
+- [X] T031 [P] [US1] In `backend/tests/unit/Application.Tests/FraudInjectorTests.cs` — given a fixed seed, intensity, and weights, the injector marks the expected share of records and respects per-pattern weights (asserts FR-002, FR-003)
+- [X] T032 [P] [US1] In `backend/tests/unit/Application.Tests/AnomalyScorerTests.cs` — `IAnomalyScorer` produces deterministic `Confidence ∈ [0,1]` for the same seed; identical input twice returns equal scores (asserts FR-006, FR-007, deterministic-detection assumption)
+- [X] T033 [P] [US1] In `backend/tests/unit/Application.Tests/BandAssignmentTests.cs` — confidences map to bands per `BandThresholds`; boundary values land in the correct band (asserts FR-008, FR-009)
+- [X] T034 [P] [US1] In `backend/tests/unit/Application.Tests/GenerateRunHandlerTests.cs` — orchestrator wires injector → scorer → banding → repository.SaveAsync; uses Moq for all collaborators (asserts FR-022, FR-005)
+- [X] T035 [P] [US1] In `backend/tests/unit/Infrastructure.Tests/BlobRunRepositoryTests.cs` — using Azurite (Testcontainers or local emulator), `SaveAsync` writes a gzip blob and a `RunIndex` table row; `LoadAsync` round-trips equality; concurrent save with stale ETag throws (asserts FR-023, FR-024, research §R3, §R4)
 
 ### Backend implementation for User Story 1
 
@@ -128,9 +128,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend tests for User Story 1 (write FIRST)
 
-- [ ] T048 [P] [US1] In `frontend/tests/api/runsClient.test.ts` — Vitest tests for typed client wrappers around `POST /api/runs`, `GET /api/runs`, `GET /api/runs/{id}`, `GET /api/runs/{id}/cases/{caseId}` using MSW; asserts zod validation rejects malformed responses
-- [ ] T049 [P] [US1] In `frontend/tests/components/BandChart.test.tsx` — renders a stable bar/donut for given `BandCounts`; renders an empty-state when all bands are 0 (FR-019)
-- [ ] T050 [P] [US1] In `frontend/tests/components/CaseList.test.tsx` — given a `Run`, renders rows grouped or color-coded by band; clicking a row fires the navigation callback
+- [X] T048 [P] [US1] In `frontend/tests/api/runsClient.test.ts` — Vitest tests for typed client wrappers around `POST /api/runs`, `GET /api/runs`, `GET /api/runs/{id}`, `GET /api/runs/{id}/cases/{caseId}` using MSW; asserts zod validation rejects malformed responses
+- [X] T049 [P] [US1] In `frontend/tests/components/BandChart.test.tsx` — renders a stable bar/donut for given `BandCounts`; renders an empty-state when all bands are 0 (FR-019)
+- [X] T050 [P] [US1] In `frontend/tests/components/CaseList.test.tsx` — given a `Run`, renders rows grouped or color-coded by band; clicking a row fires the navigation callback
 
 ### Frontend implementation for User Story 1
 
@@ -158,11 +158,11 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Backend tests for User Story 2 (write FIRST)
 
-- [ ] T060 [P] [US2] In `backend/tests/unit/Application.Tests/InvestigateCaseHandlerTests.cs` — given a mock `IAiInvestigator` returning a populated `AiInvestigationResult`, the handler attaches it to the originating run (ETag-conditioned) and persists; given a mock that throws `OperationCanceledException`, the handler returns `Unavailable` and does **not** persist (FR-013, FR-014, edge-case mid-investigation regeneration)
-- [ ] T060a [P] [US2] In the same file, add an **ETag-mid-investigation** theory: simulate a concurrent regeneration of the originating Run while an investigation is in-flight by having the `IRunRepository` mock return a 412 (precondition-failed) on the first save and the up-to-date Run on reload; assert the handler retries once, persists the AI result onto the originating `runId` blob (not any newer Run), and never silently writes to a different Run id (FR-013, FR-022, [research.md §R4](./research.md#r4-storage-shape-azure-storage-blob--table) ETag concurrency, [data-model.md](./data-model.md) invariant on `AiInvestigationResult.RunId`)
-- [ ] T061 [P] [US2] In `backend/tests/unit/Application.Tests/InvestigateCaseHandlerTests.cs` (same file, more theories) — investigation is allowed for all three bands (asserts clarification 1)
-- [ ] T062 [P] [US2] In `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` — given a mocked `IChatClient` returning structured JSON conforming to `AiVerdictDto`, returns `AiInvestigationResult{Succeeded}`; given malformed JSON returns `AiInvestigationResult{Unavailable, Reason=\"malformed\"}`; given a `RequestFailedException` returns `Unavailable` (FR-014); cancellation after 30 s returns `Unavailable` (research §R6)
-- [ ] T063 [P] [US2] In `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` (more theories) — verify the `IsInjectedFraud` and `InjectedPattern` fields are **never** included in the prompt payload (data-model invariant 1)
+- [X] T060 [P] [US2] In `backend/tests/unit/Application.Tests/InvestigateCaseHandlerTests.cs` — given a mock `IAiInvestigator` returning a populated `AiInvestigationResult`, the handler attaches it to the originating run (ETag-conditioned) and persists; given a mock that throws `OperationCanceledException`, the handler returns `Unavailable` and does **not** persist (FR-013, FR-014, edge-case mid-investigation regeneration)
+- [X] T060a [P] [US2] In the same file, add an **ETag-mid-investigation** theory: simulate a concurrent regeneration of the originating Run while an investigation is in-flight by having the `IRunRepository` mock return a 412 (precondition-failed) on the first save and the up-to-date Run on reload; assert the handler retries once, persists the AI result onto the originating `runId` blob (not any newer Run), and never silently writes to a different Run id (FR-013, FR-022, [research.md §R4](./research.md#r4-storage-shape-azure-storage-blob--table) ETag concurrency, [data-model.md](./data-model.md) invariant on `AiInvestigationResult.RunId`)
+- [X] T061 [P] [US2] In `backend/tests/unit/Application.Tests/InvestigateCaseHandlerTests.cs` (same file, more theories) — investigation is allowed for all three bands (asserts clarification 1)
+- [X] T062 [P] [US2] In `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` — given a mocked `IChatClient` returning structured JSON conforming to `AiVerdictDto`, returns `AiInvestigationResult{Succeeded}`; given malformed JSON returns `AiInvestigationResult{Unavailable, Reason=\"malformed\"}`; given a `RequestFailedException` returns `Unavailable` (FR-014); cancellation after 30 s returns `Unavailable` (research §R6)
+- [X] T063 [P] [US2] In `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` (more theories) — verify the `IsInjectedFraud` and `InjectedPattern` fields are **never** included in the prompt payload (data-model invariant 1)
 
 ### Backend implementation for User Story 2
 
@@ -175,8 +175,8 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend tests for User Story 2 (write FIRST)
 
-- [ ] T070 [P] [US2] In `frontend/tests/components/AiVerdictPanel.test.tsx` — given a `Succeeded` result, renders verdict + rationale + signals list + recommended action; given an `Unavailable` result, renders the fallback state with the unavailable reason and **no** crash (SC-007, SC-008)
-- [ ] T071 [P] [US2] In `frontend/tests/api/runsClient.test.ts` (extend) — `investigateCase(runId, caseId)` posts to the right URL and validates the response with zod
+- [X] T070 [P] [US2] In `frontend/tests/components/AiVerdictPanel.test.tsx` — given a `Succeeded` result, renders verdict + rationale + signals list + recommended action; given an `Unavailable` result, renders the fallback state with the unavailable reason and **no** crash (SC-007, SC-008)
+- [X] T071 [P] [US2] In `frontend/tests/api/runsClient.test.ts` (extend) — `investigateCase(runId, caseId)` posts to the right URL and validates the response with zod
 
 ### Frontend implementation for User Story 2
 
@@ -198,7 +198,7 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend tests for User Story 3 (write FIRST)
 
-- [ ] T075 [P] [US3] In `frontend/tests/routes/CaseDetailRoute.test.tsx` — renders Expense + Employee + Detection (score, band, contributing features) for a case with no investigation; renders Detection alongside `AiVerdictPanel` for a case with an investigation (FR-018)
+- [X] T075 [P] [US3] In `frontend/tests/routes/CaseDetailRoute.test.tsx` — renders Expense + Employee + Detection (score, band, contributing features) for a case with no investigation; renders Detection alongside `AiVerdictPanel` for a case with an investigation (FR-018)
 
 ### Frontend implementation for User Story 3
 
@@ -220,9 +220,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Tests for User Story 4 (write FIRST)
 
-- [ ] T079 [P] [US4] In `backend/tests/unit/Domain.Tests/SimulationConfigurationTests.cs` (extend T025) — explicitly cover: negative weight rejected; all-zero weights rejected; `RecordCount > 50_000` rejected; `Low >= High` rejected; `Intensity` outside [0,1] rejected (FR-021)
-- [ ] T080 [P] [US4] In `frontend/tests/components/ConfigPanel.test.tsx` — invalid input surfaces a per-field error; "Generate" is disabled while invalid; the previous valid config is retained when the user types invalid characters (FR-021)
-- [ ] T081 [P] [US4] In `frontend/tests/components/ConfigPanel.test.tsx` (extend) — adjusting any one slider triggers a controlled re-render; weight sliders auto-normalize to sum 1.0
+- [X] T079 [P] [US4] In `backend/tests/unit/Domain.Tests/SimulationConfigurationTests.cs` (extend T025) — explicitly cover: negative weight rejected; all-zero weights rejected; `RecordCount > 50_000` rejected; `Low >= High` rejected; `Intensity` outside [0,1] rejected (FR-021)
+- [X] T080 [P] [US4] In `frontend/tests/components/ConfigPanel.test.tsx` — invalid input surfaces a per-field error; "Generate" is disabled while invalid; the previous valid config is retained when the user types invalid characters (FR-021)
+- [X] T081 [P] [US4] In `frontend/tests/components/ConfigPanel.test.tsx` (extend) — adjusting any one slider triggers a controlled re-render; weight sliders auto-normalize to sum 1.0
 
 ### Implementation for User Story 4
 
@@ -243,9 +243,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 - [X] T087 [P] Author `docs/deployment.md` — `azd up` walkthrough, OIDC / `azd pipeline config`, teardown with `azd down --purge`
 - [X] T088 [P] Author `docs/components.md` — per-folder responsibilities (Domain / Application / Infrastructure / Functions / frontend / infra)
 - [X] T089 [P] Author `docs/api.md` — narrative description of the 5 endpoints with examples; cross-link to `contracts/api.openapi.yaml`
-- [ ] T090 [P] Add inline XML doc comments on every public type/method in `Domain`, `Application/Abstractions`, and on the agent-prompt-construction code in `AgentInvestigator` (Constitution VII — non-obvious logic)
-- [ ] T091 Add a `backend/tests/unit/Application.Tests/PerformanceSmokeTests.cs` `[Fact(Skip="manual")]` benchmark asserting generate+detect ≤ 5 s for 5 000 records on a local box (SC-002 sanity check)
-- [ ] T092 Run `quickstart.md` end-to-end manually as the final acceptance gate; check every Constitution row in plan.md still PASSes (Principle XI)
+- [X] T090 [P] Add inline XML doc comments on every public type/method in `Domain`, `Application/Abstractions`, and on the agent-prompt-construction code in `AgentInvestigator` (Constitution VII — non-obvious logic)
+- [X] T091 Add a `backend/tests/unit/Application.Tests/PerformanceSmokeTests.cs` `[Fact(Skip="manual")]` benchmark asserting generate+detect ≤ 5 s for 5 000 records on a local box (SC-002 sanity check)
+- [X] T092 Run `quickstart.md` end-to-end manually as the final acceptance gate; check every Constitution row in plan.md still PASSes (Principle XI)
 - [X] T093 [P] Update top-level `README.md` with a one-paragraph project description and links into `docs/`
 
 ---
@@ -305,7 +305,7 @@ Stop the moment you've shipped a story that satisfies the audience you're chasin
 
 ## Format validation
 
-All tasks above use the strict checklist format `- [ ] [TaskID] [P?] [Story?] Description with file path`:
+All tasks above use the strict checklist format `- [X] [TaskID] [P?] [Story?] Description with file path`:
 
 - ✅ Every task starts with `- [ ]`
 - ✅ Every task has a sequential ID (T001 … T093)
