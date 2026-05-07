@@ -154,11 +154,13 @@ Principle XII (Library-First Algorithms).
      against the Run's score distribution (FR-007).
    - Apply `Run.Configuration.Thresholds` (defaults `tLow = 0.55`,
      `tHigh = 0.85`) to assign `High` / `Medium` / `Low` (FR-008/9).
-   - Pull the top-N feature *contributions* via per-feature standardized
+   - Pull the **top 5** feature *contributions* via per-feature standardized
      residuals; ML.NET PCA does not expose per-feature attribution natively,
      so we recompute z-scores on the engineered features for the
      `ContributingFeatures` list. This is engineering-only post-processing,
-     not a custom algorithm.
+     not a custom algorithm. (Five strikes a balance between informativeness
+     for the case-detail panel and AI prompt budget; pinned in
+     [data-model.md](./data-model.md) under `DetectionResult`.)
 
 **Library evaluation** (required by Principle XII):
 
@@ -205,6 +207,39 @@ per request, with:
   (FR-014). On `OperationCanceledException` or any `RequestFailedException`,
   the function returns `AiInvestigationResult.Unavailable(reason)` and the
   caller persists nothing.
+
+**Prompt payload (FR-011 operationalization)**: The agent receives a single
+user message built deterministically from the Run, with these sections (this
+schema is the contract for task **T065**):
+
+1. **Case under review** — the target `ExpenseRecord` (date, amount, vendor,
+   category, submitted-by employee id) plus the matching `DetectionResult`
+   (anomaly score, confidence band, top-5 `ContributingFeatures` with their
+   z-scores).
+2. **Employee profile** — id, department, role/title, tenure bucket
+   (< 1 yr / 1–3 yr / 3+ yr), historical mean & stddev of expense amount.
+3. **Recent history (90-day window ending at the case's submission date)** —
+   count of submissions, total amount, count above the employee's
+   per-category historical mean + 2σ, count of distinct vendors, and the
+   three highest-scored prior records with date/amount/score.
+4. **Peer comparison** — for the same `(department, category)` cohort within
+   the Run: cohort size, median amount, 75th/95th percentile amount, the
+   case's percentile rank within that cohort.
+5. **Run context** — `runId`, applied `SimulationConfiguration` (intensity
+   and per-pattern weights), and band thresholds. The agent is told this is
+   a synthetic dataset and that ground-truth fraud labels exist but are not
+   provided.
+
+`FraudLikelihood` semantics for the structured output:
+- `Likely` — agent has converged on a probable-fraud judgment with at least
+  one corroborating signal beyond the anomaly score.
+- `Unlikely` — explicit benign explanation found (e.g., recurring legitimate
+  vendor for the role, amount within peer 75th percentile).
+- `Inconclusive` — neither corroborated nor refuted; this is the **default
+  on weak signals** and is preferred over a low-confidence `Likely`.
+
+This payload is built from the Run already loaded in memory (no extra
+storage round trips), keeping SC-004 (≤ 10 s) achievable.
 
 **Rationale**:
 - The Microsoft Agent Framework GA's stateless agent + structured output is

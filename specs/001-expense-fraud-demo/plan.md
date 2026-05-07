@@ -69,7 +69,9 @@ in Bicep; CI/CD is GitHub Actions with OIDC federated identity, deploying via
 
 **Scale/Scope**:
 - Single concurrent presenter; v1 has no per-user scoping (FR-025) but data model carries an owner placeholder field for forward-compatibility
-- Datasets: 1,000–50,000 expense records, 50–500 simulated employees
+- Datasets: 1,000–50,000 expense records, 10–500 simulated employees (lower
+  bound 10 supports small unit-test fixtures and minimal smoke runs; demo
+  scenarios typically use 50–200)
 - Run history: unbounded retention in Azure Storage (no auto-purge in v1)
 
 ## Constitution Check

@@ -42,7 +42,7 @@ optional AiInvestigationResult), not a persisted entity.
 | `BandCounts` | `BandCounts` | Cached summary `{ high, medium, low }` |
 
 **Validation**:
-- `Employees.Count` ≥ 10 and ≤ 5 000 (derived from default 50–500 + headroom)
+- `Employees.Count` ≥ 10 and ≤ 500 (matches `SimulationConfiguration.EmployeeCount` bounds in [contracts/api.openapi.yaml](./contracts/api.openapi.yaml); lower bound 10 supports small test fixtures, demo scenarios typically use 50–200)
 - `Expenses.Count` ≥ 1 and ≤ 50 000 (FR-004)
 - `DetectionResults.Count == Expenses.Count` (invariant)
 - Every `AiInvestigationResult.RecordId` ∈ `Expenses` (referential integrity)
@@ -123,7 +123,7 @@ HTTP 400 if all three are zero (per FR-021).
 | `RawScore` | `double` | Pre-normalization composite score |
 | `Confidence` | `double` | ∈ [0,1], normalized (FR-007) |
 | `Band` | `ConfidenceBand` | `High` \| `Medium` \| `Low` (FR-008) |
-| `ContributingFeatures` | `IReadOnlyList<FeatureContribution>` | Top N features sorted by absolute z-score |
+| `ContributingFeatures` | `IReadOnlyList<FeatureContribution>` | **Top 5** features sorted by absolute z-score, descending. The list MUST be non-empty for any record (FR-007 / SC-008 alignment); if fewer than 5 features were engineered, all are returned. |
 
 `FeatureContribution` = `{ Name: string, Value: double, ZScore: double }`.
 
