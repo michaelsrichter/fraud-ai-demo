@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { AiInvestigationResult } from "../api/runsClient";
-import { AVAILABLE_MODELS, getPromptPreview } from "../api/runsClient";
+import type { AiInvestigationResult, ConsensusResult } from "../api/runsClient";
+import { AVAILABLE_MODELS, getPromptPreview, consensusInvestigate } from "../api/runsClient";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
   isLoading: boolean;
-  onInvestigate: (modelDeploymentName: string) => void;
+  onInvestigate: (modelDeploymentName: string, temperature?: number) => void;
   runId: string;
   caseId: string;
 }
@@ -13,9 +13,12 @@ interface Props {
 export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId, caseId }: Props) {
   const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].name);
   const currentModel = AVAILABLE_MODELS.find((m) => m.name === selectedModel) ?? AVAILABLE_MODELS[0];
+  const [temperature, setTemperature] = useState(0.7);
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptData, setPromptData] = useState<{ systemPrompt: string; userPrompt: string } | null>(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const [consensusResult, setConsensusResult] = useState<ConsensusResult | null>(null);
+  const [loadingConsensus, setLoadingConsensus] = useState(false);
 
   const handleShowPrompt = async () => {
     if (showPrompt) { setShowPrompt(false); return; }
@@ -28,6 +31,19 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
       console.error(e);
     } finally {
       setLoadingPrompt(false);
+    }
+  };
+
+  const handleConsensus = async () => {
+    setLoadingConsensus(true);
+    setConsensusResult(null);
+    try {
+      const result = await consensusInvestigate(runId, caseId, temperature);
+      setConsensusResult(result);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingConsensus(false);
     }
   };
 
@@ -60,9 +76,59 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
           Mini is ~70% cheaper than flagship models.
         </p>
       </div>
-      <button className="secondary" style={{ fontSize: "0.75rem", marginBottom: 8 }} onClick={handleShowPrompt}>
-        {loadingPrompt ? "Loading…" : showPrompt ? "Hide prompt" : "Preview AI prompt"}
-      </button>
+      <div className="field" style={{ marginBottom: 8 }}>
+        <label>Temperature: {temperature.toFixed(1)}</label>
+        <span className="help">
+          Controls creativity. 0.0 = deterministic, 1.0 = creative, 1.5+ = very creative.
+          Higher values may produce more nuanced reasoning but less consistent results.
+        </span>
+        <input type="range" min={0} max={2} step={0.1} value={temperature}
+          onChange={(e) => setTemperature(Number(e.target.value))} />
+      </div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+        <button className="secondary" style={{ fontSize: "0.75rem" }} onClick={handleShowPrompt}>
+          {loadingPrompt ? "Loading…" : showPrompt ? "Hide prompt" : "Preview AI prompt"}
+        </button>
+        <button className="secondary" style={{ fontSize: "0.75rem" }} onClick={handleConsensus} disabled={loadingConsensus}>
+          {loadingConsensus ? "Running all models…" : "Consensus (all 3 models)"}
+        </button>
+      </div>
+      <p className="help">
+        <strong>Note:</strong> The AI does NOT receive the ML confidence score or band — it reasons
+        independently from raw expense data, feature z-scores, employee profile, and peer comparison.
+      </p>
+      {consensusResult && (
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <h2 style={{ fontSize: "0.95rem", margin: "0 0 8px" }}>
+            Consensus: <span className={`badge badge-${consensusResult.consensusVerdict === "Likely" ? "high" : consensusResult.consensusVerdict === "Unlikely" ? "low" : "medium"}`}>
+              {consensusResult.consensusVerdict}
+            </span>
+            <span className="muted" style={{ marginLeft: 8 }}>
+              ({consensusResult.succeededCount}/{consensusResult.modelCount} models responded)
+            </span>
+          </h2>
+          {consensusResult.models.map((m) => (
+            <div key={m.model} style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
+              <p style={{ margin: "0 0 4px" }}>
+                <strong>{m.model}</strong>:{" "}
+                {m.status === "Succeeded" ? (
+                  <span className={`badge badge-${m.verdict === "Likely" ? "high" : m.verdict === "Unlikely" ? "low" : "medium"}`}>
+                    {m.verdict}
+                  </span>
+                ) : (
+                  <span className="badge badge-medium">Unavailable: {m.unavailableReason}</span>
+                )}
+              </p>
+              {m.rationale && <p className="muted" style={{ fontSize: "0.8rem", margin: "4px 0" }}>{m.rationale}</p>}
+              {m.keySignals && m.keySignals.length > 0 && (
+                <ul className="signals" style={{ fontSize: "0.75rem" }}>
+                  {m.keySignals.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {showPrompt && promptData && (
         <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12, maxHeight: 400, overflow: "auto", fontSize: "0.78rem" }}>
           <h2 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>System instructions</h2>
@@ -74,7 +140,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
       {!investigation && !isLoading && (
         <div>
           <p className="muted">No AI investigation has been run for this case yet.</p>
-          <button onClick={() => onInvestigate(selectedModel)}>Investigate with AI</button>
+          <button onClick={() => onInvestigate(selectedModel, temperature)}>Investigate with AI</button>
           <p className="help" style={{ marginTop: 8 }}>Typically completes in 5–15 seconds. Timeout at 30 s.</p>
         </div>
       )}
@@ -89,7 +155,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
             The AI service was unreachable or timed out. The demo continues to work without it — this
             is the graceful degradation behavior. Check that Foundry__Endpoint is configured.
           </p>
-          <button className="secondary" onClick={() => onInvestigate(selectedModel)}>Retry</button>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>Retry</button>
         </div>
       )}
       {investigation?.status === "Succeeded" && (
@@ -128,7 +194,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
           <p>
             <strong>Recommended action:</strong> {investigation.recommendedAction}
           </p>
-          <button className="secondary" onClick={() => onInvestigate(selectedModel)}>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>
             Re-investigate
           </button>
           <span className="help" style={{ marginLeft: 8 }}>Send to AI again (you can pick a different model).</span>

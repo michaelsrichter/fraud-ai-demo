@@ -48,7 +48,7 @@ public class InvestigateCaseHandlerTests
             expense.RecordId, run.RunId, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
             FraudLikelihood.Likely, "Suspicious pattern", new[] { "High amount" }, "Escalate");
 
-        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(aiResult);
 
         var handler = new InvestigateCaseHandler(repo.Object, investigator.Object,
@@ -76,7 +76,7 @@ public class InvestigateCaseHandlerTests
         var aiResult = AiInvestigationResult.Unavailable(
             expense.RecordId, run.RunId, DateTimeOffset.UtcNow, "timeout");
 
-        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(aiResult);
 
         var handler = new InvestigateCaseHandler(repo.Object, investigator.Object,
@@ -109,7 +109,7 @@ public class InvestigateCaseHandlerTests
             expense.RecordId, run.RunId, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
             FraudLikelihood.Unlikely, "Normal", new[] { "Nothing" }, "Close");
 
-        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(aiResult);
 
         var handler = new InvestigateCaseHandler(repo.Object, investigator.Object,
@@ -151,7 +151,7 @@ public class InvestigateCaseHandlerTests
         repo.Setup(r => r.UpdateAsync(It.IsAny<Run>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("etag-2");
 
-        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        investigator.Setup(i => i.InvestigateAsync(It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(AiInvestigationResult.Succeeded(
                 expense.RecordId, run.RunId, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
                 FraudLikelihood.Inconclusive, "test", new[] { "s" }, "none"));

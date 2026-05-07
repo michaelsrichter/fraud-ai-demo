@@ -162,12 +162,38 @@ export async function getCase(runId: string, caseId: string): Promise<Case> {
   return jsonRequest(`${API_BASE}/runs/${runId}/cases/${caseId}`, { method: "GET" }, CaseSchema);
 }
 
-export async function investigateCase(runId: string, caseId: string, modelDeploymentName?: string): Promise<AiInvestigationResult> {
+export async function investigateCase(runId: string, caseId: string, modelDeploymentName?: string, temperature?: number): Promise<AiInvestigationResult> {
   return jsonRequest(
     `${API_BASE}/runs/${runId}/cases/${caseId}/investigate`,
-    { method: "POST", body: JSON.stringify({ modelDeploymentName: modelDeploymentName ?? undefined }) },
+    { method: "POST", body: JSON.stringify({ modelDeploymentName, temperature }) },
     AiInvestigationResultSchema,
   );
+}
+
+export interface ConsensusResult {
+  consensusVerdict: string;
+  modelCount: number;
+  succeededCount: number;
+  temperature: number | null;
+  models: Array<{
+    model: string;
+    status: string;
+    verdict: string | null;
+    rationale: string | null;
+    keySignals: string[] | null;
+    recommendedAction: string | null;
+    unavailableReason: string | null;
+  }>;
+}
+
+export async function consensusInvestigate(runId: string, caseId: string, temperature?: number): Promise<ConsensusResult> {
+  const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/consensus`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ temperature }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
 }
 
 export const AVAILABLE_MODELS = [

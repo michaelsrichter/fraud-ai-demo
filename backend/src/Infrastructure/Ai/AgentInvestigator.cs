@@ -36,19 +36,26 @@ public sealed class AgentInvestigator : IAiInvestigator
     private static readonly string SystemPrompt = """
         You are an expert internal expense fraud investigator reviewing synthetic data
         from an anomaly-detection demo. You receive a single case with the employee profile,
-        a 90-day expense history, peer-cohort statistics, and ML detection output.
+        a 90-day expense history, peer-cohort statistics, and feature analysis.
 
-        DECISION FRAMEWORK (follow strictly):
-        1. If the ML detection confidence is ≥ 0.85 (High band) AND at least one strong
-           fraud signal is present (anomalous vendor, amount near policy threshold,
-           weekend/late-night submission, or category deviation), verdict = "Likely".
-        2. If confidence is 0.55–0.85 (Medium band) with mixed signals, verdict = "Inconclusive".
-        3. If confidence is < 0.55 (Low band) or no fraud indicators are present,
-           verdict = "Unlikely".
-        4. When in doubt between Likely and Inconclusive, check whether the vendor name
-           appears suspicious (e.g., OffshoreLLC, QuickCash, ShellCorp, Untraceable,
-           GreyMarket) — these are known shell-company names in this synthetic dataset
-           and should strongly favor "Likely."
+        IMPORTANT: You do NOT receive any ML model scores or confidence bands. You must
+        reason independently from the raw data and feature signals provided.
+
+        DECISION FRAMEWORK:
+        1. If multiple strong fraud signals are present (anomalous vendor, amount near
+           policy threshold, weekend/late-night submission, category deviation, high
+           feature z-scores), verdict = "Likely".
+        2. If only one or two weak signals are present, or signals are contradictory,
+           verdict = "Inconclusive".
+        3. If no fraud indicators are present and the expense looks normal for the
+           employee's profile and peer cohort, verdict = "Unlikely".
+
+        STRONG FRAUD SIGNALS (any of these should weigh heavily toward "Likely"):
+        - Vendor name contains suspicious keywords (OffshoreLLC, QuickCash, ShellCorp,
+          Untraceable, GreyMarket) — known shell companies
+        - Amount is within $50 of the $1,000 auto-approval threshold (threshold gaming)
+        - Submission on weekend + atypical category for the employee
+        - Feature z-score |z| > 2.0 (top ~2% of population)
 
         Z-SCORE INTERPRETATION:
         - |z| > 2.0 = highly anomalous (top ~2% of population)
@@ -56,12 +63,12 @@ public sealed class AgentInvestigator : IAiInvestigator
         - |z| < 1.0 = within normal range
 
         FEATURE MEANINGS:
-        - vendorRarity: how rare this vendor is in the dataset (-log frequency). High = unusual vendor.
-        - amountZ: how far this expense amount deviates from the population mean.
-        - amountVsThresholdGap: 1.0 if amount is within $50 of the $1,000 policy threshold (threshold gaming signal).
-        - frequencyZ: how much this employee's submission frequency deviates from the average.
-        - categoryDeviation: 1.0 if the expense category is atypical for this employee.
-        - weekendSubmission: 1.0 if submitted on a weekend (unusual for legitimate business expenses).
+        - vendorRarity: how rare this vendor is (-log frequency). High = unusual vendor.
+        - amountZ: how far this amount deviates from the population mean.
+        - amountVsThresholdGap: 1.0 if within $50 of $1,000 threshold (gaming signal).
+        - frequencyZ: how much this employee's submission count deviates from average.
+        - categoryDeviation: 1.0 if category is atypical for this employee.
+        - weekendSubmission: 1.0 if submitted on weekend.
 
         Your reply MUST be a single JSON object — no prose, no markdown fences — matching:
         {
@@ -85,7 +92,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         _logger = logger;
     }
 
-    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, CancellationToken cancellationToken)
+    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(caseUnderReview);
@@ -107,11 +114,16 @@ public sealed class AgentInvestigator : IAiInvestigator
             var azureClient = new AzureOpenAIClient(new Uri(_foundry.Endpoint), _credential);
             ChatClient chat = azureClient.GetChatClient(deploymentName);
             IChatClient chatClient = chat.AsIChatClient();
+            var chatOptions = new ChatOptions();
+            if (temperature.HasValue)
+            {
+                chatOptions.Temperature = temperature.Value;
+            }
             var agent = new ChatClientAgent(chatClient, instructions: SystemPrompt);
 
             var prompt = BuildPrompt(run, caseUnderReview);
-            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} promptLen={Len}",
-                run.RunId, caseUnderReview.Expense.RecordId, prompt.Length);
+            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} model={Model} temp={Temp} promptLen={Len}",
+                run.RunId, caseUnderReview.Expense.RecordId, deploymentName, temperature, prompt.Length);
 
             var response = await agent.RunAsync(prompt, cancellationToken: cts.Token);
             sw.Stop();
@@ -207,12 +219,12 @@ public sealed class AgentInvestigator : IAiInvestigator
         sb.AppendLine("=== 1. CASE UNDER REVIEW ===");
         sb.AppendLine($"recordId: {expense.RecordId:D}");
         sb.AppendLine($"submittedUtc: {expense.SubmittedUtc:O}");
+        sb.AppendLine($"dayOfWeek: {expense.SubmittedUtc.DayOfWeek}");
         sb.AppendLine($"amount: {expense.Amount:F2}");
+        sb.AppendLine($"distanceFromApprovalThreshold: {(1000m - expense.Amount):F2} (negative = over $1000)");
         sb.AppendLine($"category: {expense.Category}");
         sb.AppendLine($"vendor: {expense.Vendor}");
-        sb.AppendLine($"detection.confidence: {detection.Confidence:F4}");
-        sb.AppendLine($"detection.band: {detection.Band}");
-        sb.AppendLine("detection.topFeatures:");
+        sb.AppendLine("featureAnalysis:");
         foreach (var f in detection.ContributingFeatures)
         {
             sb.AppendLine($"  - {f.Name}: value={f.Value:F4} z={f.ZScore:F4}");

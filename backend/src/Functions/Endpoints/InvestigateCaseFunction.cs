@@ -24,6 +24,7 @@ public sealed class InvestigateCaseFunction
         CancellationToken cancellationToken)
     {
         string? modelDeploymentName = null;
+        float? temperature = null;
         try
         {
             var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body, cancellationToken: cancellationToken);
@@ -31,10 +32,14 @@ public sealed class InvestigateCaseFunction
             {
                 modelDeploymentName = modelProp.GetString();
             }
+            if (body.TryGetProperty("temperature", out var tempProp) && tempProp.ValueKind == JsonValueKind.Number)
+            {
+                temperature = tempProp.GetSingle();
+            }
         }
-        catch { /* empty body is fine — use default model */ }
+        catch { /* empty body is fine — use defaults */ }
 
-        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId, modelDeploymentName), cancellationToken);
+        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId, modelDeploymentName, temperature), cancellationToken);
         if (result.RunNotFound)
         {
             return await req.NotFoundAsync("Run not found", $"No run with id {runId:D}.", cancellationToken);
