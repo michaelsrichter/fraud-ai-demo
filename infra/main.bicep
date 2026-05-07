@@ -6,7 +6,7 @@ targetScope = 'subscription'
 param environmentName string
 
 @minLength(1)
-@description('Azure region for all resources')
+@description('Azure region — must support Flex Consumption, Azure OpenAI, and Static Web Apps (e.g. eastus2)')
 param location string
 
 @description('Object ID of the deploying user (granted dev access via RBAC, Constitution IV)')
@@ -30,8 +30,9 @@ resource rg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   tags: tags
 }
 
-module storage 'modules/storage.bicep' = {
-  name: 'storage'
+// --- Networking: VNet, subnets, private DNS zones ---
+module network 'modules/network.bicep' = {
+  name: 'network'
   scope: rg
   params: {
     namePrefix: namePrefix
@@ -40,6 +41,22 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
+// --- Storage: single account for AzureWebJobsStorage + app data ---
+module storage 'modules/storage.bicep' = {
+  name: 'storage'
+  scope: rg
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneBlobId: network.outputs.privateDnsZoneBlobId
+    privateDnsZoneTableId: network.outputs.privateDnsZoneTableId
+    privateDnsZoneQueueId: network.outputs.privateDnsZoneQueueId
+  }
+}
+
+// --- Foundry / Azure OpenAI with private endpoint ---
 module foundry 'modules/foundry.bicep' = {
   name: 'foundry'
   scope: rg
@@ -49,9 +66,12 @@ module foundry 'modules/foundry.bicep' = {
     tags: tags
     modelName: gptModelName
     modelVersion: gptModelVersion
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneOpenAIId: network.outputs.privateDnsZoneOpenAIId
   }
 }
 
+// --- Functions: VNet-integrated, single storage account, managed identity ---
 module functions 'modules/functions.bicep' = {
   name: 'functions'
   scope: rg
@@ -64,9 +84,11 @@ module functions 'modules/functions.bicep' = {
     storageTableEndpoint: storage.outputs.tableEndpoint
     foundryEndpoint: foundry.outputs.endpoint
     foundryDeploymentName: foundry.outputs.deploymentName
+    functionsSubnetId: network.outputs.functionsSubnetId
   }
 }
 
+// --- Static Web App linked to Functions backend ---
 module staticWebApp 'modules/staticwebapp.bicep' = {
   name: 'staticWebApp'
   scope: rg
@@ -78,12 +100,13 @@ module staticWebApp 'modules/staticwebapp.bicep' = {
   }
 }
 
+// --- RBAC: MI + deploying user get Storage + Foundry access ---
 module rbac 'modules/rbac.bicep' = {
   name: 'rbac'
   scope: rg
   params: {
     storageAccountName: storage.outputs.storageAccountName
-    foundryAccountName: '${namePrefix}oai'
+    foundryAccountName: foundry.outputs.foundryAccountName
     functionsPrincipalId: functions.outputs.principalId
     userPrincipalId: principalId
   }

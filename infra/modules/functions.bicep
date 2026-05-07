@@ -1,4 +1,5 @@
 // Azure Functions Flex Consumption + Application Insights + Log Analytics
+// VNet-integrated; all backend traffic flows via private endpoints.
 @description('Name prefix for resources')
 param namePrefix string
 
@@ -8,7 +9,7 @@ param location string
 @description('Tags applied to every resource')
 param tags object = {}
 
-@description('Storage account name used by the Functions app for triggers/state')
+@description('Storage account name (single account for AzureWebJobsStorage + app data)')
 param storageAccountName string
 
 @description('Storage blob endpoint for Run repository')
@@ -22,6 +23,9 @@ param foundryEndpoint string
 
 @description('Foundry deployment name')
 param foundryDeploymentName string
+
+@description('Subnet resource ID for Functions VNet integration')
+param functionsSubnetId string
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${namePrefix}log'
@@ -75,10 +79,12 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   properties: {
     serverFarmId: flexPlan.id
     httpsOnly: true
+    virtualNetworkSubnetId: functionsSubnetId
+    vnetRouteAllEnabled: true
     functionAppConfig: {
       runtime: {
         name: 'dotnet-isolated'
-        version: '8.0'
+        version: '10.0'
       }
       scaleAndConcurrency: {
         instanceMemoryMB: 2048
@@ -143,13 +149,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         ]
       }
     }
-  }
-}
-
-resource deployContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  name: '${storageAccountName}/default/deploy'
-  properties: {
-    publicAccess: 'None'
   }
 }
 
