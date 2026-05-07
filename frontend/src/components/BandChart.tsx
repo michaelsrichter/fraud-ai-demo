@@ -25,10 +25,22 @@ export function BandChart({ counts }: Props) {
       </p>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-          <XAxis dataKey="band" stroke="#94a3b8" />
-          <YAxis stroke="#94a3b8" />
-          <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis dataKey="band" stroke="var(--text-muted)" />
+          <YAxis stroke="var(--text-muted)" />
+          <Tooltip
+            contentStyle={{
+              background: "var(--bg-surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              color: "var(--text)",
+            }}
+            labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+            formatter={(value: number, _name: string, props: { payload: { band: string } }) => {
+              const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
+              return [`${value} records (${pct}%)`, props.payload.band];
+            }}
+          />
           <Bar dataKey="value">
             {data.map((entry) => (
               <Cell key={entry.band} fill={entry.fill} />

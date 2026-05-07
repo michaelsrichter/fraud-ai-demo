@@ -18,4 +18,6 @@ public interface IRunRepository
     Task<string?> UpdateAsync(Run run, string ifMatchEtag, CancellationToken cancellationToken);
 
     Task<RunListPage> ListAsync(int take, string? continuationToken, CancellationToken cancellationToken);
+
+    Task<bool> DeleteAsync(Guid runId, CancellationToken cancellationToken);
 }

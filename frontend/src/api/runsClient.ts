@@ -169,3 +169,10 @@ export async function investigateCase(runId: string, caseId: string): Promise<Ai
     AiInvestigationResultSchema,
   );
 }
+
+export async function deleteRun(runId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/runs/${runId}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete failed: ${res.status} ${res.statusText}`);
+  }
+}

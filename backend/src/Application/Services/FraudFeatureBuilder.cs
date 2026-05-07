@@ -51,6 +51,7 @@ public sealed class FraudFeatureBuilder
 
         var rows = new float[expenses.Count][];
         var zRows = new double[expenses.Count][];
+        var columnCount = FeatureNames.Length;
 
         // Compute aggregate statistics for the columns that need run-level z-scores.
         var rawAmount = expenses.Select(e => (double)e.Amount).ToArray();
@@ -87,15 +88,19 @@ public sealed class FraudFeatureBuilder
                 (float)weekend,
             };
 
-            zRows[i] = new[]
-            {
-                amountZ,
-                thresholdSignal,
-                frequencyZ,
-                vendorRarity,
-                inTypicalCategory,
-                weekend,
-            };
+            // Placeholder — z-scores computed in a second pass below
+            zRows[i] = new double[columnCount];
+        }
+
+        // Compute z-scores across the full population for each feature column
+        for (var col = 0; col < columnCount; col++)
+        {
+            var colValues = new double[expenses.Count];
+            for (var r = 0; r < expenses.Count; r++)
+                colValues[r] = rows[r][col];
+            var (colMean, colStd) = MeanStd(colValues);
+            for (var r = 0; r < expenses.Count; r++)
+                zRows[r][col] = ZScore(colValues[r], colMean, colStd);
         }
 
         return new FeatureMatrix(FeatureNames, rows, zRows);

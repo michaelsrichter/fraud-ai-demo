@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createRun, listRuns, type SimulationConfiguration } from "../api/runsClient";
+import { createRun, deleteRun, listRuns, type SimulationConfiguration } from "../api/runsClient";
 import { ConfigPanel } from "../components/ConfigPanel";
 
 export function RunsRoute() {
@@ -16,6 +16,11 @@ export function RunsRoute() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (runId: string) => deleteRun(runId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["runs"] }),
+  });
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -26,11 +31,21 @@ export function RunsRoute() {
         <p className="help">Click a run to re-open it. Compare band distributions across different configurations.</p>
         {runsQuery.isLoading && <p className="muted">Loading…</p>}
         {runsQuery.data?.items.map((r) => (
-          <div key={r.runId} className="run-row" onClick={() => navigate(`/runs/${r.runId}`)}>
-            <div style={{ fontSize: "0.8rem" }}>{new Date(r.createdUtc).toLocaleString()}</div>
-            <div className="muted" style={{ fontSize: "0.75rem" }}>
-              {r.recordCount} rec · H{r.bandCounts.high}/M{r.bandCounts.medium}/L{r.bandCounts.low}
+          <div key={r.runId} className="run-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+            <div onClick={() => navigate(`/runs/${r.runId}`)} style={{ flex: 1, cursor: "pointer" }}>
+              <div style={{ fontSize: "0.8rem" }}>{new Date(r.createdUtc).toLocaleString()}</div>
+              <div className="muted" style={{ fontSize: "0.75rem" }}>
+                {r.recordCount} rec · H{r.bandCounts.high}/M{r.bandCounts.medium}/L{r.bandCounts.low}
+              </div>
             </div>
+            <button
+              className="secondary"
+              style={{ padding: "2px 6px", fontSize: "0.7rem", flexShrink: 0 }}
+              title="Delete this run"
+              onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(r.runId); }}
+            >
+              ✕
+            </button>
           </div>
         ))}
         {runsQuery.data?.items.length === 0 && <p className="muted">No runs yet.</p>}

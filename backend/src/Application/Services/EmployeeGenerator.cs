@@ -8,10 +8,29 @@ public sealed class EmployeeGenerator : IEmployeeGenerator
 {
     private static readonly string[] Departments = { "Sales", "Engineering", "Operations", "Marketing", "Finance" };
     private static readonly string[] Roles = { "IC", "Senior IC", "Manager", "Director" };
-    private static readonly string[] FirstNames = { "Alex", "Morgan", "Taylor", "Jordan", "Casey", "Riley", "Quinn", "Avery", "Jamie", "Reese", "Sam", "Drew", "Skyler", "Hayden", "Rowan" };
-    private static readonly string[] LastNames = { "Patel", "Nguyen", "Garcia", "Smith", "Lee", "Johnson", "Brown", "Khan", "Mueller", "Rossi", "Kim", "Cohen", "Park", "Silva", "Diaz" };
-    private static readonly string[] AllCategories = { "Travel", "Meals", "Lodging", "Office", "Training", "Software", "Conferences" };
-    private static readonly string[] AllVendors = { "AcmeAir", "BlueCab", "CityHotel", "DeltaSky", "EcoMart", "FineDine", "GlobeTrek", "HelpDesk", "InkOffice", "JetCharter", "KaffeeBar", "LearnHub", "Marriot", "Nova", "OmniSoft", "PrintCo", "QuickBite", "Rentals", "SuiteStay", "TechStore" };
+    private static readonly string[] FirstNames = {
+        "Alex", "Morgan", "Taylor", "Jordan", "Casey", "Riley", "Quinn", "Avery", "Jamie", "Reese",
+        "Sam", "Drew", "Skyler", "Hayden", "Rowan", "Dakota", "Emery", "Finley", "Harper", "Blake",
+        "Cameron", "Sage", "Ellis", "Lennox", "Phoenix", "Kai", "Remy", "Tatum", "Aubrey", "Devon",
+        "Kendall", "Logan", "Marley", "Noel", "Parker", "Reed", "Shannon", "Teagan", "Val", "Wren",
+        "Arden", "Blair", "Corey", "Dana", "Eden", "Flynn", "Gray", "Hollis", "Ira", "Jules"
+    };
+    private static readonly string[] LastNames = {
+        "Patel", "Nguyen", "Garcia", "Smith", "Lee", "Johnson", "Brown", "Khan", "Mueller", "Rossi",
+        "Kim", "Cohen", "Park", "Silva", "Diaz", "Chen", "Lopez", "Wang", "Martin", "Anderson",
+        "Williams", "Davis", "Wilson", "Moore", "Taylor", "Thomas", "Jackson", "White", "Harris", "Clark",
+        "Lewis", "Walker", "Hall", "Young", "Allen", "King", "Wright", "Scott", "Adams", "Baker",
+        "Carter", "Mitchell", "Perez", "Roberts", "Turner", "Phillips", "Campbell", "Evans", "Edwards", "Collins"
+    };
+    private static readonly string[] AllCategories = { "Travel", "Meals", "Lodging", "Office", "Training", "Software", "Conferences", "Equipment", "Communications", "Subscriptions" };
+    private static readonly string[] AllVendors = {
+        "AcmeAir", "BlueCab", "CityHotel", "DeltaSky", "EcoMart", "FineDine", "GlobeTrek", "HelpDesk",
+        "InkOffice", "JetCharter", "KaffeeBar", "LearnHub", "Marriot", "Nova", "OmniSoft", "PrintCo",
+        "QuickBite", "Rentals", "SuiteStay", "TechStore", "AirLink", "BizTravel", "CloudNet", "DataPro",
+        "ExpressShip", "FlyFirst", "GrandStay", "HiTech", "InnKeeper", "JoyRide", "KeyCard", "LuxStay",
+        "MetroGo", "NetBiz", "OpenDesk", "PrimeAir", "QualityInn", "RapidTax", "SkillUp", "TopFuel",
+        "UniPrint", "VendorPay", "WebHost", "XpressEat", "ZenDesk"
+    };
 
     public IReadOnlyList<Employee> Generate(int employeeCount, Random rng)
     {

@@ -152,6 +152,22 @@ public sealed class BlobRunRepository : IRunRepository
         return new RunListPage(items, next);
     }
 
+    public async Task<bool> DeleteAsync(Guid runId, CancellationToken cancellationToken)
+    {
+        var blob = _container.GetBlobClient(BlobName(runId));
+        try
+        {
+            await blob.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+            await _table.DeleteEntityAsync(IndexPartition, runId.ToString("D"), cancellationToken: cancellationToken);
+            _logger.LogInformation("Run {RunId} deleted", runId);
+            return true;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            return false;
+        }
+    }
+
     private async Task UpsertIndexAsync(Run run, CancellationToken cancellationToken)
     {
         var summary = new RunSummary(

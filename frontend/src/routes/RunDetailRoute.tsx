@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { createRun, getRun, type SimulationConfiguration } from "../api/runsClient";
+import { createRun, deleteRun, getRun, type SimulationConfiguration } from "../api/runsClient";
 import { BandChart } from "../components/BandChart";
 import { CaseList } from "../components/CaseList";
 import { ConfigPanel } from "../components/ConfigPanel";
@@ -23,6 +23,14 @@ export function RunDetailRoute() {
     onSuccess: (run) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
       navigate(`/runs/${run.runId}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteRun(runId!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["runs"] });
+      navigate("/runs");
     },
   });
 
@@ -48,6 +56,13 @@ export function RunDetailRoute() {
                 records · intensity {runQuery.data.configuration.intensity.toFixed(2)}
               </p>
               <BandChart counts={runQuery.data.bandCounts} />
+              <button
+                className="secondary"
+                style={{ marginTop: 8, fontSize: "0.8rem" }}
+                onClick={() => { if (confirm("Delete this run?")) deleteMutation.mutate(); }}
+              >
+                Delete this run
+              </button>
             </div>
             <div className="panel">
               <h2>Cases</h2>

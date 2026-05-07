@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { getCase, investigateCase } from "../api/runsClient";
+import { getCase, getRun, investigateCase } from "../api/runsClient";
 import { AiVerdictPanel } from "../components/AiVerdictPanel";
 
 export function CaseDetailRoute() {
@@ -13,6 +14,12 @@ export function CaseDetailRoute() {
     enabled: !!runId && !!caseId,
   });
 
+  const runQuery = useQuery({
+    queryKey: ["run", runId],
+    queryFn: () => getRun(runId!),
+    enabled: !!runId,
+  });
+
   const investigateMutation = useMutation({
     mutationFn: () => investigateCase(runId!, caseId!),
     onSuccess: () => {
@@ -20,6 +27,16 @@ export function CaseDetailRoute() {
       qc.invalidateQueries({ queryKey: ["run", runId] });
     },
   });
+
+  const employeeHistory = useMemo(() => {
+    if (!runQuery.data || !caseQuery.data) return null;
+    const empId = caseQuery.data.employee.employeeId;
+    const detMap = new Map(runQuery.data.detectionResults.map((d) => [d.recordId, d]));
+    return runQuery.data.expenses
+      .filter((e) => e.employeeId === empId)
+      .map((e) => ({ expense: e, detection: detMap.get(e.recordId)! }))
+      .sort((a, b) => new Date(b.expense.submittedUtc).getTime() - new Date(a.expense.submittedUtc).getTime());
+  }, [runQuery.data, caseQuery.data]);
 
   if (caseQuery.isLoading) return <div className="main">Loading case…</div>;
   if (caseQuery.error) return <div className="main error">{(caseQuery.error as Error).message}</div>;
@@ -100,6 +117,49 @@ export function CaseDetailRoute() {
         />
         {investigateMutation.error && (
           <p className="error">{(investigateMutation.error as Error).message}</p>
+        )}
+        {employeeHistory && employeeHistory.length > 1 && (
+          <div className="panel">
+            <h2>Other expenses by {c.employee.name}</h2>
+            <p className="help">
+              All {employeeHistory.length} expenses submitted by this employee in the dataset.
+              The current case is highlighted. Look for patterns — clustering near $1,000,
+              unusual vendors, or weekend submissions.
+            </p>
+            <table className="feature-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Category</th>
+                  <th>Vendor</th>
+                  <th>Band</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employeeHistory.map(({ expense: e, detection: d }) => (
+                  <tr
+                    key={e.recordId}
+                    style={e.recordId === caseId ? { background: "var(--bg-hover)", fontWeight: 600 } : undefined}
+                  >
+                    <td>{new Date(e.submittedUtc).toLocaleDateString()}</td>
+                    <td>${e.amount.toFixed(2)}</td>
+                    <td>{e.category}</td>
+                    <td>{e.vendor}</td>
+                    <td><span className={`band-${d.band.toLowerCase()}`}>{d.band}</span></td>
+                    <td>{d.confidence.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="help" style={{ marginTop: 8 }}>
+              Total: ${employeeHistory.reduce((s, h) => s + h.expense.amount, 0).toFixed(2)} across{" "}
+              {employeeHistory.length} expenses ·{" "}
+              {new Set(employeeHistory.map((h) => h.expense.vendor)).size} distinct vendors ·{" "}
+              {employeeHistory.filter((h) => h.detection.band !== "Low").length} flagged
+            </p>
+          </div>
         )}
       </main>
     </div>
