@@ -126,10 +126,19 @@ export type Case = z.infer<typeof CaseSchema>;
 
 const API_BASE = "/api";
 
+function getUserId(): string {
+  try {
+    const raw = localStorage.getItem("fraud-lab-profile");
+    if (raw) return JSON.parse(raw).id ?? "";
+  } catch { /* ignore */ }
+  return "";
+}
+
 async function jsonRequest<T>(url: string, init: RequestInit, schema: z.ZodSchema<T>): Promise<T> {
+  const userId = getUserId();
   const res = await fetch(url, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+    headers: { "Content-Type": "application/json", "X-User-Id": userId, ...(init.headers ?? {}) },
   });
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;

@@ -12,7 +12,7 @@ export function RunsRoute() {
     mutationFn: (config: SimulationConfiguration) => createRun(config),
     onSuccess: (run) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/runs/${run.runId}`);
+      navigate(`/labs/expenses/${run.runId}`);
     },
   });
 
@@ -33,7 +33,7 @@ export function RunsRoute() {
         {runsQuery.isLoading && <p className="muted">Loading…</p>}
         {runsQuery.data?.items.map((r) => (
           <div key={r.runId} className="run-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-            <div onClick={() => navigate(`/runs/${r.runId}`)} style={{ flex: 1, cursor: "pointer" }}>
+            <div onClick={() => navigate(`/labs/expenses/${r.runId}`)} style={{ flex: 1, cursor: "pointer" }}>
               <div style={{ fontSize: "0.8rem" }}>{new Date(r.createdUtc).toLocaleString()}</div>
               <div className="muted" style={{ fontSize: "0.75rem" }}>
                 {r.recordCount} rec · H{r.bandCounts.high}/M{r.bandCounts.medium}/L{r.bandCounts.low}

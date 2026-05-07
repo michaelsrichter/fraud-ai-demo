@@ -51,7 +51,8 @@ public sealed class GenerateRunFunction
         try
         {
             var config = _mapper.Map(dto);
-            var run = await _handler.HandleAsync(config, cancellationToken);
+            var ownerId = req.Headers.TryGetValues("X-User-Id", out var ids) ? ids.FirstOrDefault() ?? "" : "";
+            var run = await _handler.HandleAsync(config, ownerId, cancellationToken);
             var response = req.CreateResponse(HttpStatusCode.Created);
             response.Headers.Add("Location", $"/api/runs/{run.RunId:D}");
             await response.WriteAsJsonAsync(run, cancellationToken);

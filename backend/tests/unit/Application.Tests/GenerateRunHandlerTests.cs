@@ -45,7 +45,7 @@ public class GenerateRunHandlerTests
             patternWeights: new PatternWeights(0.34m, 0.33m, 0.33m),
             thresholds: BandThresholds.Default, seed: 42, modelDeploymentName: "test");
 
-        var run = await handler.HandleAsync(config, CancellationToken.None);
+        var run = await handler.HandleAsync(config, "test-owner", CancellationToken.None);
 
         run.Should().NotBeNull();
         run.Expenses.Should().HaveCount(100);

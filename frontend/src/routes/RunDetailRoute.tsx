@@ -22,7 +22,7 @@ export function RunDetailRoute() {
     mutationFn: (config: SimulationConfiguration) => createRun(config),
     onSuccess: (run) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate(`/runs/${run.runId}`);
+      navigate(`/labs/expenses/${run.runId}`);
     },
   });
 
@@ -30,14 +30,14 @@ export function RunDetailRoute() {
     mutationFn: () => deleteRun(runId!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["runs"] });
-      navigate("/runs");
+      navigate("/labs/expenses");
     },
   });
 
   return (
     <div className="layout">
       <aside className="sidebar">
-        <Link to="/runs">&larr; Back to runs</Link>
+        <Link to="/labs/expenses">&larr; Back to runs</Link>
         <ConfigPanel
           initial={runQuery.data?.configuration}
           onGenerate={(c) => createMutation.mutate(c)}
@@ -85,7 +85,7 @@ export function RunDetailRoute() {
               <CaseList
                 run={runQuery.data}
                 filter={filter}
-                onSelect={(caseId) => navigate(`/runs/${runId}/cases/${caseId}`)}
+                onSelect={(caseId) => navigate(`/labs/expenses/${runId}/cases/${caseId}`)}
               />
             </div>
           </>

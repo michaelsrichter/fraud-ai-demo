@@ -35,7 +35,7 @@ public sealed class GenerateRunHandler
         _logger = logger;
     }
 
-    public async Task<Run> HandleAsync(SimulationConfiguration config, CancellationToken cancellationToken)
+    public async Task<Run> HandleAsync(SimulationConfiguration config, string ownerId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(config);
         var rng = _random.ForRun(config.Seed);
@@ -51,7 +51,7 @@ public sealed class GenerateRunHandler
 
         var run = new Run(
             runId: Guid.NewGuid(),
-            ownerId: "v1",
+            ownerId: string.IsNullOrWhiteSpace(ownerId) ? "anonymous" : ownerId,
             createdUtc: now,
             configuration: config,
             employees: employees,

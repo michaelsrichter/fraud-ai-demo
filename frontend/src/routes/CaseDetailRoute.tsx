@@ -49,7 +49,7 @@ export function CaseDetailRoute() {
   return (
     <div className="layout">
       <aside className="sidebar">
-        <Link to={`/runs/${runId}`}>&larr; Back to run</Link>
+        <Link to={`/labs/expenses/${runId}`}>&larr; Back to run</Link>
         <h2>Expense details</h2>
         <p className="help">The individual expense claim under review.</p>
         <p>

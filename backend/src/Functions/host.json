@@ -9,7 +9,8 @@
     },
     "logLevel": {
       "default": "Information",
-      "FraudDemo": "Information"
+      "FraudDemo": "Information",
+      "Microsoft.Azure.WebJobs.Script.WebHost.Health": "Warning"
     }
   },
   "extensions": {
