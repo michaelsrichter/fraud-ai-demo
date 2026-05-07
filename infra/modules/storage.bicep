@@ -74,6 +74,11 @@ resource runIndexTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2
   name: 'RunIndex'
 }
 
+resource userProfilesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'UserProfiles'
+}
+
 // --- Private endpoints ---
 
 resource peBlobStorage 'Microsoft.Network/privateEndpoints@2024-01-01' = {

@@ -5,6 +5,7 @@ import { RunDetailRoute } from "./routes/RunDetailRoute";
 import { CaseDetailRoute } from "./routes/CaseDetailRoute";
 import { HowItWorksRoute } from "./routes/HowItWorksRoute";
 import { HomePage } from "./routes/HomePage";
+import { AdminRoute } from "./routes/AdminRoute";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { TopNav } from "./components/TopNav";
 import { ComingSoonLab } from "./components/ComingSoonLab";
@@ -23,6 +24,16 @@ function LabGuard({ children, profile, onProfileCreated }: {
 export function App() {
   const [profile, setProfile] = useState<UserProfile | null>(getProfile());
 
+  const handleProfileCreated = (p: UserProfile) => {
+    setProfile(p);
+    // Sync profile to server
+    fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(p),
+    }).catch(() => { /* best-effort */ });
+  };
+
   return (
     <>
       <TopNav profile={profile} />
@@ -32,17 +43,17 @@ export function App() {
 
         {/* Expenses lab */}
         <Route path="/labs/expenses" element={
-          <LabGuard profile={profile} onProfileCreated={setProfile}>
+          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
             <RunsRoute />
           </LabGuard>
         } />
         <Route path="/labs/expenses/:runId" element={
-          <LabGuard profile={profile} onProfileCreated={setProfile}>
+          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
             <RunDetailRoute />
           </LabGuard>
         } />
         <Route path="/labs/expenses/:runId/cases/:caseId" element={
-          <LabGuard profile={profile} onProfileCreated={setProfile}>
+          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
             <CaseDetailRoute />
           </LabGuard>
         } />
@@ -53,13 +64,13 @@ export function App() {
 
         {/* Coming soon labs */}
         <Route path="/labs/insurance" element={
-          <LabGuard profile={profile} onProfileCreated={setProfile}>
+          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
             <ComingSoonLab title="Insurance Claim Fraud" icon="🏥"
               description="Detect fraudulent insurance claims: inflated damage estimates, suspicious claim timing, phantom injuries, and staged accidents." />
           </LabGuard>
         } />
         <Route path="/labs/payments" element={
-          <LabGuard profile={profile} onProfileCreated={setProfile}>
+          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
             <ComingSoonLab title="Payment Fraud Detection" icon="💳"
               description="Classic credit card fraud detection: unusual transaction amounts, geographic anomalies, velocity checks, and merchant category deviations." />
           </LabGuard>
@@ -67,6 +78,9 @@ export function App() {
 
         {/* Info pages */}
         <Route path="/how-it-works" element={<HowItWorksRoute />} />
+
+        {/* Admin */}
+        <Route path="/admin" element={<AdminRoute />} />
       </Routes>
     </>
   );

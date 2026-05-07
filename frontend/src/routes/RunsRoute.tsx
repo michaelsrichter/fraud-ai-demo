@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createRun, deleteRun, listRuns, type SimulationConfiguration } from "../api/runsClient";
+import { createRun, deleteRun, listRuns, trackActivity, type SimulationConfiguration } from "../api/runsClient";
 import { ConfigPanel } from "../components/ConfigPanel";
 
 export function RunsRoute() {
@@ -12,6 +12,7 @@ export function RunsRoute() {
     mutationFn: (config: SimulationConfiguration) => createRun(config),
     onSuccess: (run) => {
       qc.invalidateQueries({ queryKey: ["runs"] });
+      trackActivity("expense-run");
       navigate(`/labs/expenses/${run.runId}`);
     },
   });

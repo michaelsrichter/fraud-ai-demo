@@ -61,14 +61,21 @@ The web app includes Microsoft Clarity for session recording and heatmaps. Azure
 
 ## Assumptions
 
-- No server-side authentication — profile is client-only, stored in localStorage
+- No server-side authentication for labs — profile is client-only, stored in localStorage
 - Profile ID is trusted (no spoofing protection — acceptable for a demo)
 - Insurance and Payments labs are placeholder pages only in this spec
 - The existing Expense lab functionality is preserved exactly; only the routing and layout wrapper change
 
 ## Out of Scope
 
-- Server-side user authentication (OAuth, Entra ID)
 - Profile transfer between browsers/devices
 - Insurance and Payments lab implementations (separate future specs)
-- Role-based access control
+
+## Clarifications
+
+### Session 2026-05-07
+- Q: Should /admin require authentication? → A: Yes. Azure SWA built-in auth with GitHub provider. Role "admin" required, configured via Azure portal invitations.
+- Q: Should user profiles be tracked server-side? → A: Yes. UserProfiles Azure Table stores profiles + activity counters (expense runs, insurance runs, payment runs, AI investigations). Synced on profile creation and incremented on each activity.
+- Q: Should the admin see activity metrics? → A: Yes. /admin dashboard shows user count, total runs, total AI investigations, and a table of all profiles with per-lab run counts and last-seen timestamps.
+- Q: How is /admin auth configured? → A: staticwebapp.config.json routes config restricts /admin and GET /api/profiles to "admin" role. 401 redirects to /.auth/login/github. Admin role assigned via Azure portal Role management invitations.
+- Q: Is server-side data isolation (FR-005) fully implemented? → A: Partially. X-User-Id header is sent with all API calls and stored as ownerId on Run creation. Server-side filtering on ListRuns (so users only see their own runs) is deferred — currently all runs are visible to all users. The profile gate on the frontend provides UX-level isolation.

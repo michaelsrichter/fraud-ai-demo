@@ -233,10 +233,20 @@ export const AVAILABLE_MODELS = [
 ] as const;
 
 export async function deleteRun(runId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/runs/${runId}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/runs/${runId}`, { method: "DELETE", headers: { "X-User-Id": getUserId() } });
   if (!res.ok && res.status !== 204) {
     throw new Error(`Delete failed: ${res.status} ${res.statusText}`);
   }
+}
+
+export function trackActivity(activity: "expense-run" | "insurance-run" | "payment-run" | "ai-investigation") {
+  const userId = getUserId();
+  if (!userId) return;
+  fetch(`${API_BASE}/profiles/activity`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, activity }),
+  }).catch(() => { /* best-effort */ });
 }
 
 export async function getPromptPreview(runId: string, caseId: string): Promise<{ systemPrompt: string; userPrompt: string }> {

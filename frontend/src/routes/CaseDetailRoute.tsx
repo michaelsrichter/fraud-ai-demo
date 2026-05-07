@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { getCase, getRun, investigateCase, FEATURE_EXPLANATIONS } from "../api/runsClient";
+import { getCase, getRun, investigateCase, trackActivity, FEATURE_EXPLANATIONS } from "../api/runsClient";
 import { AiVerdictPanel } from "../components/AiVerdictPanel";
 
 export function CaseDetailRoute() {
@@ -24,6 +24,7 @@ export function CaseDetailRoute() {
     mutationFn: ({ model, temperature }: { model: string; temperature?: number }) =>
       investigateCase(runId!, caseId!, model, temperature),
     onSuccess: () => {
+      trackActivity("ai-investigation");
       qc.invalidateQueries({ queryKey: ["case", runId, caseId] });
       qc.invalidateQueries({ queryKey: ["run", runId] });
     },
