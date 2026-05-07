@@ -25,6 +25,7 @@ export function RunsRoute() {
     <div className="layout">
       <aside className="sidebar">
         <h1>Fraud Demo</h1>
+        <a href="/how-it-works" style={{ fontSize: "0.8rem" }}>How it works &rarr;</a>
         <ConfigPanel onGenerate={(c) => createMutation.mutate(c)} isGenerating={createMutation.isPending} />
         {createMutation.error && <p className="error">{(createMutation.error as Error).message}</p>}
         <h2>Prior runs</h2>

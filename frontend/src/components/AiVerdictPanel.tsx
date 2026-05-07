@@ -1,16 +1,35 @@
 import { useState } from "react";
 import type { AiInvestigationResult } from "../api/runsClient";
-import { AVAILABLE_MODELS } from "../api/runsClient";
+import { AVAILABLE_MODELS, getPromptPreview } from "../api/runsClient";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
   isLoading: boolean;
   onInvestigate: (modelDeploymentName: string) => void;
+  runId: string;
+  caseId: string;
 }
 
-export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Props) {
+export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId, caseId }: Props) {
   const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].name);
   const currentModel = AVAILABLE_MODELS.find((m) => m.name === selectedModel) ?? AVAILABLE_MODELS[0];
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptData, setPromptData] = useState<{ systemPrompt: string; userPrompt: string } | null>(null);
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
+
+  const handleShowPrompt = async () => {
+    if (showPrompt) { setShowPrompt(false); return; }
+    setLoadingPrompt(true);
+    try {
+      const data = await getPromptPreview(runId, caseId);
+      setPromptData(data);
+      setShowPrompt(true);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingPrompt(false);
+    }
+  };
 
   return (
     <div className="panel">
@@ -41,6 +60,17 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Prop
           Mini is ~70% cheaper than flagship models.
         </p>
       </div>
+      <button className="secondary" style={{ fontSize: "0.75rem", marginBottom: 8 }} onClick={handleShowPrompt}>
+        {loadingPrompt ? "Loading…" : showPrompt ? "Hide prompt" : "Preview AI prompt"}
+      </button>
+      {showPrompt && promptData && (
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12, maxHeight: 400, overflow: "auto", fontSize: "0.78rem" }}>
+          <h2 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>System instructions</h2>
+          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)", margin: "0 0 12px" }}>{promptData.systemPrompt}</pre>
+          <h2 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>Case prompt (sent to model)</h2>
+          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text)", margin: 0 }}>{promptData.userPrompt}</pre>
+        </div>
+      )}
       {!investigation && !isLoading && (
         <div>
           <p className="muted">No AI investigation has been run for this case yet.</p>

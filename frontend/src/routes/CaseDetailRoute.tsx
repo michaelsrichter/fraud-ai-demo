@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { getCase, getRun, investigateCase } from "../api/runsClient";
+import { getCase, getRun, investigateCase, FEATURE_EXPLANATIONS } from "../api/runsClient";
 import { AiVerdictPanel } from "../components/AiVerdictPanel";
 
 export function CaseDetailRoute() {
@@ -86,34 +86,70 @@ export function CaseDetailRoute() {
             <strong>Confidence score:</strong> {det.confidence.toFixed(4)}
             <span className="muted"> (0 = normal, 1 = highly anomalous)</span>
           </p>
-          <h2>Top contributing features</h2>
+          <div style={{ background: "var(--bg)", borderRadius: 4, padding: "4px 0", margin: "8px 0" }}>
+            <div style={{
+              width: `${Math.min(det.confidence * 100, 100)}%`,
+              height: 8,
+              borderRadius: 4,
+              background: det.confidence >= 0.85 ? "var(--band-high)" : det.confidence >= 0.55 ? "var(--band-medium)" : "var(--band-low)",
+            }} />
+          </div>
+          <h2>Contributing features</h2>
           <p className="help">
-            The features that pushed this record's anomaly score up or down.
-            Higher |z-score| means more deviation from the norm.
+            Each feature captures a different fraud signal. The <strong>value</strong> is the raw
+            measurement; the <strong>z-score</strong> shows how many standard deviations it is from the
+            population mean. |z| &gt; 2.0 = top ~2% (highly anomalous), |z| &gt; 1.5 = notably unusual.
           </p>
           <table className="feature-table">
             <thead>
               <tr>
-                <th title="Feature name from the 6-dimensional fraud signal vector">Name</th>
-                <th title="Raw feature value for this record">Value</th>
-                <th title="Standard deviations from the population mean — large values flag outliers">Z-score</th>
+                <th>Feature</th>
+                <th>Value</th>
+                <th>Z-score</th>
+                <th style={{ width: 120 }}>Magnitude</th>
+                <th>Signal</th>
               </tr>
             </thead>
             <tbody>
-              {det.contributingFeatures.map((f) => (
-                <tr key={f.name}>
-                  <td>{f.name}</td>
-                  <td>{f.value.toFixed(3)}</td>
-                  <td>{f.zScore.toFixed(3)}</td>
-                </tr>
-              ))}
+              {det.contributingFeatures.map((f) => {
+                const absZ = Math.abs(f.zScore);
+                const info = FEATURE_EXPLANATIONS[f.name];
+                const barWidth = Math.min(absZ / 4 * 100, 100);
+                const barColor = absZ > 2 ? "var(--band-high)" : absZ > 1.5 ? "var(--band-medium)" : "var(--band-low)";
+                const signalLevel = absZ > 2 ? "🔴 Anomalous" : absZ > 1.5 ? "🟡 Unusual" : "🟢 Normal";
+                return (
+                  <tr key={f.name} title={info?.description ?? ""}>
+                    <td>
+                      <strong>{info?.label ?? f.name}</strong>
+                      <div className="help" style={{ margin: 0 }}>{info?.description ?? ""}</div>
+                    </td>
+                    <td>{f.value.toFixed(3)}</td>
+                    <td style={{ fontWeight: absZ > 1.5 ? 600 : 400, color: absZ > 2 ? "var(--band-high)" : undefined }}>
+                      {f.zScore >= 0 ? "+" : ""}{f.zScore.toFixed(3)}
+                    </td>
+                    <td>
+                      <div style={{ background: "var(--bg)", borderRadius: 3, height: 10 }}>
+                        <div style={{ width: `${barWidth}%`, height: 10, borderRadius: 3, background: barColor, transition: "width 0.3s" }} />
+                      </div>
+                    </td>
+                    <td style={{ fontSize: "0.8rem" }}>{signalLevel}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          {det.contributingFeatures.some(f => Math.abs(f.zScore) > 2) && (
+            <p className="help" style={{ color: "var(--band-high)", marginTop: 8 }}>
+              ⚠ One or more features are highly anomalous (|z| &gt; 2.0) — this case warrants investigation.
+            </p>
+          )}
         </div>
         <AiVerdictPanel
           investigation={c.investigation ?? null}
           isLoading={investigateMutation.isPending}
           onInvestigate={(model) => investigateMutation.mutate(model)}
+          runId={runId!}
+          caseId={caseId!}
         />
         {investigateMutation.error && (
           <p className="error">{(investigateMutation.error as Error).message}</p>

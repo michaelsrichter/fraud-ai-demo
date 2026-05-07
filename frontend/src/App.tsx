@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { RunsRoute } from "./routes/RunsRoute";
 import { RunDetailRoute } from "./routes/RunDetailRoute";
 import { CaseDetailRoute } from "./routes/CaseDetailRoute";
+import { HowItWorksRoute } from "./routes/HowItWorksRoute";
 import { ThemeToggle } from "./components/ThemeToggle";
 
 export function App() {
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/runs" element={<RunsRoute />} />
         <Route path="/runs/:runId" element={<RunDetailRoute />} />
         <Route path="/runs/:runId/cases/:caseId" element={<CaseDetailRoute />} />
+        <Route path="/how-it-works" element={<HowItWorksRoute />} />
       </Routes>
     </>
   );

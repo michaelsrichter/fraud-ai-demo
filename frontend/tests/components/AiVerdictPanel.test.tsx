@@ -5,7 +5,7 @@ import type { AiInvestigationResult } from "../../src/api/runsClient";
 
 describe("AiVerdictPanel", () => {
   it("renders empty state when no investigation", () => {
-    render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} />);
+    render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
     expect(screen.getByText(/no ai investigation/i)).toBeInTheDocument();
     expect(screen.getByText(/investigate with ai/i)).toBeInTheDocument();
   });
@@ -22,7 +22,7 @@ describe("AiVerdictPanel", () => {
       keySignals: ["High amount", "Rare vendor"],
       recommendedAction: "Escalate to compliance",
     };
-    render(<AiVerdictPanel investigation={result} isLoading={false} onInvestigate={vi.fn()} />);
+    render(<AiVerdictPanel investigation={result} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
     expect(screen.getByText("Likely")).toBeInTheDocument();
     expect(screen.getByText("Multiple suspicious indicators")).toBeInTheDocument();
     expect(screen.getByText("High amount")).toBeInTheDocument();
@@ -38,19 +38,19 @@ describe("AiVerdictPanel", () => {
       status: "Unavailable",
       unavailableReason: "timeout",
     };
-    render(<AiVerdictPanel investigation={result} isLoading={false} onInvestigate={vi.fn()} />);
+    render(<AiVerdictPanel investigation={result} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
     expect(screen.getByText("Unavailable")).toBeInTheDocument();
     expect(screen.getByText("timeout")).toBeInTheDocument();
     expect(screen.getByText(/retry/i)).toBeInTheDocument();
   });
 
   it("renders loading state", () => {
-    render(<AiVerdictPanel investigation={null} isLoading={true} onInvestigate={vi.fn()} />);
+    render(<AiVerdictPanel investigation={null} isLoading={true} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
     expect(screen.getByText(/investigating/i)).toBeInTheDocument();
   });
 
   it("has a model selector", () => {
-    const { container } = render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} />);
+    const { container } = render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
     const select = container.querySelector("select");
     expect(select).toBeTruthy();
     expect(select?.options.length).toBeGreaterThan(0);

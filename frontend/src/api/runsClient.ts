@@ -203,3 +203,42 @@ export async function deleteRun(runId: string): Promise<void> {
     throw new Error(`Delete failed: ${res.status} ${res.statusText}`);
   }
 }
+
+export async function getPromptPreview(runId: string, caseId: string): Promise<{ systemPrompt: string; userPrompt: string }> {
+  const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/prompt`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export const FEATURE_EXPLANATIONS: Record<string, { label: string; description: string; fraudSignal: string }> = {
+  vendorRarity: {
+    label: "Vendor Rarity",
+    description: "How rare this vendor is across the entire dataset (-log of frequency). Higher = more unusual.",
+    fraudSignal: "Suspicious shell-company vendors appear very rarely, causing high rarity scores.",
+  },
+  amountZ: {
+    label: "Amount Z-Score",
+    description: "How far this expense amount deviates from the population mean, in standard deviations.",
+    fraudSignal: "Unusually high amounts stand out — especially near policy thresholds.",
+  },
+  amountVsThresholdGap: {
+    label: "Threshold Gaming",
+    description: "Binary signal: 1.0 if the amount is within $50 of the $1,000 approval threshold.",
+    fraudSignal: "Fraudsters often submit expenses just under the auto-approval limit.",
+  },
+  frequencyZ: {
+    label: "Frequency Z-Score",
+    description: "How much this employee's submission count deviates from the average across all employees.",
+    fraudSignal: "Excessive submission frequency can indicate systematic abuse.",
+  },
+  categoryDeviation: {
+    label: "Category Deviation",
+    description: "Binary signal: 1.0 if the expense category is atypical for this employee's profile.",
+    fraudSignal: "Submitting in unfamiliar categories may indicate misclassification or fabrication.",
+  },
+  weekendSubmission: {
+    label: "Weekend Submission",
+    description: "Binary signal: 1.0 if submitted on Saturday or Sunday.",
+    fraudSignal: "Legitimate business expenses are rarely submitted on weekends.",
+  },
+};

@@ -31,12 +31,37 @@ public sealed class AgentInvestigator : IAiInvestigator
         Converters = { new JsonStringEnumConverter() },
     };
 
+    public static string SystemPromptText => SystemPrompt;
+
     private static readonly string SystemPrompt = """
-        You are a meticulous internal expense fraud investigator. You receive a single
-        synthetic case under review with the employee profile, a 90-day expense history
-        window, peer-cohort statistics, and run-level configuration. Reason about whether
-        the case is likely fraud. Use the Inconclusive verdict for weak/contradictory
-        signals — prefer it over a low-confidence Likely.
+        You are an expert internal expense fraud investigator reviewing synthetic data
+        from an anomaly-detection demo. You receive a single case with the employee profile,
+        a 90-day expense history, peer-cohort statistics, and ML detection output.
+
+        DECISION FRAMEWORK (follow strictly):
+        1. If the ML detection confidence is ≥ 0.85 (High band) AND at least one strong
+           fraud signal is present (anomalous vendor, amount near policy threshold,
+           weekend/late-night submission, or category deviation), verdict = "Likely".
+        2. If confidence is 0.55–0.85 (Medium band) with mixed signals, verdict = "Inconclusive".
+        3. If confidence is < 0.55 (Low band) or no fraud indicators are present,
+           verdict = "Unlikely".
+        4. When in doubt between Likely and Inconclusive, check whether the vendor name
+           appears suspicious (e.g., OffshoreLLC, QuickCash, ShellCorp, Untraceable,
+           GreyMarket) — these are known shell-company names in this synthetic dataset
+           and should strongly favor "Likely."
+
+        Z-SCORE INTERPRETATION:
+        - |z| > 2.0 = highly anomalous (top ~2% of population)
+        - |z| > 1.5 = notably unusual
+        - |z| < 1.0 = within normal range
+
+        FEATURE MEANINGS:
+        - vendorRarity: how rare this vendor is in the dataset (-log frequency). High = unusual vendor.
+        - amountZ: how far this expense amount deviates from the population mean.
+        - amountVsThresholdGap: 1.0 if amount is within $50 of the $1,000 policy threshold (threshold gaming signal).
+        - frequencyZ: how much this employee's submission frequency deviates from the average.
+        - categoryDeviation: 1.0 if the expense category is atypical for this employee.
+        - weekendSubmission: 1.0 if submitted on a weekend (unusual for legitimate business expenses).
 
         Your reply MUST be a single JSON object — no prose, no markdown fences — matching:
         {
@@ -220,10 +245,12 @@ public sealed class AgentInvestigator : IAiInvestigator
 
         sb.AppendLine("=== 5. RUN CONTEXT ===");
         sb.AppendLine($"runId: {run.RunId:D}");
-        sb.AppendLine($"intensity: {run.Configuration.Intensity:F2}");
-        sb.AppendLine($"weights: T={run.Configuration.PatternWeights.ThresholdGaming:F2} F={run.Configuration.PatternWeights.UnusualFrequency:F2} V={run.Configuration.PatternWeights.VendorAnomaly:F2}");
-        sb.AppendLine($"thresholds: low={run.Configuration.Thresholds.Low:F2} high={run.Configuration.Thresholds.High:F2}");
-        sb.AppendLine("note: This is a synthetic dataset; ground-truth labels exist but are NOT supplied to you.");
+        sb.AppendLine($"totalRecords: {run.Expenses.Count}");
+        sb.AppendLine($"intensity: {run.Configuration.Intensity:F2} (fraction of records with injected fraud)");
+        sb.AppendLine($"weights: ThresholdGaming={run.Configuration.PatternWeights.ThresholdGaming:F2} UnusualFrequency={run.Configuration.PatternWeights.UnusualFrequency:F2} VendorAnomaly={run.Configuration.PatternWeights.VendorAnomaly:F2}");
+        sb.AppendLine($"thresholds: Low<{run.Configuration.Thresholds.Low:F2}, Medium={run.Configuration.Thresholds.Low:F2}-{run.Configuration.Thresholds.High:F2}, High>{run.Configuration.Thresholds.High:F2}");
+        sb.AppendLine($"bandDistribution: High={run.BandCounts.High}, Medium={run.BandCounts.Medium}, Low={run.BandCounts.Low}");
+        sb.AppendLine("note: This is a synthetic dataset. Ground-truth labels exist but are NOT supplied to you. Base your verdict on the signals above.");
 
         return sb.ToString();
     }
