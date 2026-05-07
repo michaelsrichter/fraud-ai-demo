@@ -9,7 +9,8 @@ interface Props {
 }
 
 export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Props) {
-  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0]);
+  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].name);
+  const currentModel = AVAILABLE_MODELS.find((m) => m.name === selectedModel) ?? AVAILABLE_MODELS[0];
 
   return (
     <div className="panel">
@@ -17,16 +18,28 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Prop
       <p className="help">
         Send this case to the AI agent via Microsoft Foundry for a structured fraud assessment.
         The AI receives the expense details, employee profile, 90-day history, and peer comparison — but
-        never the ground-truth labels. It returns a verdict, rationale, key signals, and recommended action.
+        never the ground-truth labels. Choose a model below — costs vary significantly between tiers.
       </p>
       <div className="field" style={{ marginBottom: 8 }}>
         <label>Model</label>
-        <span className="help">Choose which Foundry model to use for the investigation.</span>
         <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
           {AVAILABLE_MODELS.map((m) => (
-            <option key={m} value={m}>{m}</option>
+            <option key={m.name} value={m.name}>{m.label} — {m.description}</option>
           ))}
         </select>
+        <div className="help" style={{ display: "flex", gap: 16, marginTop: 4, flexWrap: "wrap" }}>
+          <span>Input: <strong>{currentModel.inputCost}</strong>/1M tokens</span>
+          <span>Output: <strong>{currentModel.outputCost}</strong>/1M tokens</span>
+          <span className={`badge badge-${currentModel.tier === "premium" ? "high" : currentModel.tier === "economy" ? "low" : "medium"}`}
+                style={{ fontSize: "0.65rem" }}>
+            {currentModel.tier === "premium" ? "$$$ Premium" : currentModel.tier === "economy" ? "$ Economy" : "$$ Standard"}
+          </span>
+        </div>
+        <p className="help">
+          A typical investigation uses ~2K input + ~500 output tokens.
+          Est. cost per call: {currentModel.tier === "economy" ? "~$0.004" : "~$0.013"}.
+          Mini is ~70% cheaper than flagship models.
+        </p>
       </div>
       {!investigation && !isLoading && (
         <div>

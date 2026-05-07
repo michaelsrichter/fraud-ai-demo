@@ -170,7 +170,32 @@ export async function investigateCase(runId: string, caseId: string, modelDeploy
   );
 }
 
-export const AVAILABLE_MODELS = ["gpt-4.1", "o3", "o4-mini"] as const;
+export const AVAILABLE_MODELS = [
+  {
+    name: "gpt-5.4",
+    label: "GPT-5.4",
+    description: "Latest flagship. Strongest reasoning & agentic workflows.",
+    inputCost: "$2.50",
+    outputCost: "$15.00",
+    tier: "premium" as const,
+  },
+  {
+    name: "gpt-5.3-chat",
+    label: "GPT-5.3 Chat",
+    description: "Strong all-rounder. Frontier coding + reasoning.",
+    inputCost: "$1.75",
+    outputCost: "$14.00",
+    tier: "standard" as const,
+  },
+  {
+    name: "gpt-5.4-mini",
+    label: "GPT-5.4 Mini",
+    description: "Cost-efficient. Good quality at ~70% lower cost.",
+    inputCost: "$0.75",
+    outputCost: "$4.50",
+    tier: "economy" as const,
+  },
+] as const;
 
 export async function deleteRun(runId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/runs/${runId}`, { method: "DELETE" });

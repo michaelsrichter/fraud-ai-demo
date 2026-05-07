@@ -14,7 +14,7 @@ param principalId string
 
 @description('Model deployments for the Foundry project — array of {name, modelName, modelVersion, capacity}')
 param modelDeployments array = [
-  { name: 'gpt-4.1', modelName: 'gpt-4.1', modelVersion: '2025-04-14', capacity: 100 }
+  { name: 'gpt-5.4', modelName: 'gpt-5.4', modelVersion: '2026-03-05', capacity: 100 }
 ]
 
 var resourceToken = uniqueString(subscription().id, environmentName, location)
