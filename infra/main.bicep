@@ -94,7 +94,7 @@ module staticWebApp 'modules/staticwebapp.bicep' = {
     namePrefix: namePrefix
     location: location
     tags: tags
-    backendFunctionAppId: resourceId(rg.name, 'Microsoft.Web/sites', functions.outputs.functionAppName)
+    backendFunctionAppId: resourceId(subscription().subscriptionId, rg.name, 'Microsoft.Web/sites', functions.outputs.functionAppName)
   }
 }
 
