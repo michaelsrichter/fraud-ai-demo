@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: Fraud AI Demo API
+  version: 1.0.0
+  description: |
+    HTTP API for the AI-Powered Internal Expense Fraud Demo. All endpoints are
+    served by the .NET 9 isolated-worker Azure Functions backend and consumed
+    by the React frontend. Auth is **not** required in v1 (FR-025); per-user
+    scoping is deferred. Service-to-service calls (Functions → Storage,
+    Functions → Foundry) use Managed Identity per project Constitution
+    Principle IV.
+  contact:
+    name: fraud-ai-demo
+
+servers:
+  - url: /api
+    description: Functions backend, mounted at /api by Static Web Apps linkage
+
+tags:
+  - name: runs
+    description: Generate, list, and inspect simulation Runs.
+  - name: cases
+    description: Inspect and AI-investigate individual cases within a Run.
+
+paths:
+  /runs:
+    post:
+      tags: [runs]
+      operationId: createRun
+      summary: Generate a new Run (synthetic data + detection results)
+      description: |
+        Atomically generates a synthetic dataset using the supplied
+        `SimulationConfiguration`, runs the deterministic detection pipeline
+        across every record, and persists the resulting Run to Azure Storage.
+        Returns the full Run aggregate. (FR-001 … FR-009, FR-022)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulationConfiguration"
+      responses:
+        "201":
+          description: Run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Run"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [runs]
+      operationId: listRuns
+      summary: List prior Runs (summary view)
+      description: |
+        Returns the metadata for all Runs in the v1 shared scope (FR-024,
+        FR-025). Sorted by `createdUtc` descending.
+      parameters:
+        - in: query
+          name: take
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - in: query
+          name: continuationToken
+          schema: { type: string }
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSummaryPage"
+
+  /runs/{runId}:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    get:
+      tags: [runs]
+      operationId: getRun
+      summary: Fetch a full Run aggregate
+      responses:
+        "200":
+          description: Full Run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Run"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /runs/{runId}/cases/{caseId}:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+      - $ref: "#/components/parameters/CaseId"
+    get:
+      tags: [cases]
+      operationId: getCase
+      summary: Fetch a single Case (Expense + Detection + optional AI result)
+      responses:
+        "200":
+          description: Case detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /runs/{runId}/cases/{caseId}/investigate:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+      - $ref: "#/components/parameters/CaseId"
+    post:
+      tags: [cases]
+      operationId: investigateCase
+      summary: Invoke the AI investigator on a Case
+      description: |
+        Synchronously calls the Microsoft Foundry-backed agent (FR-010 … FR-013)
+        with structured context for the case. On success, persists the verdict
+        to the originating Run blob via ETag-conditioned write. On AI failure
+        or 30 s timeout, returns a result with `status = "Unavailable"` and
+        does not persist (FR-014).
+      responses:
+        "200":
+          description: Investigation completed (success or graceful unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiInvestigationResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+
+  parameters:
+    RunId:
+      in: path
+      name: runId
+      required: true
+      schema: { type: string, format: uuid }
+    CaseId:
+      in: path
+      name: caseId
+      required: true
+      description: The `recordId` of the underlying ExpenseRecord.
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Validation error (FR-021)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    NotFound:
+      description: Run or Case not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    InternalError:
+      description: Unhandled server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+
+  schemas:
+
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+    SimulationConfiguration:
+      type: object
+      required: [recordCount, intensity, patternWeights]
+      additionalProperties: false
+      properties:
+        recordCount:
+          type: integer
+          minimum: 1
+          maximum: 50000
+          description: FR-004 — capped at 50 000.
+        employeeCount:
+          type: integer
+          minimum: 10
+          maximum: 500
+          default: 100
+        intensity:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Overall fraud-injection intensity (FR-003).
+        patternWeights:
+          $ref: "#/components/schemas/PatternWeights"
+        thresholds:
+          $ref: "#/components/schemas/BandThresholds"
+        seed:
+          type: integer
+          nullable: true
+          description: Optional seed for reproducible generation.
+
+    PatternWeights:
+      type: object
+      required: [thresholdGaming, unusualFrequency, vendorAnomaly]
+      additionalProperties: false
+      description: |
+        Per-pattern weights (FR-002, FR-003). The server normalizes the values
+        to sum to 1.0; rejects with HTTP 400 if all three are zero or any is
+        negative.
+      properties:
+        thresholdGaming: { type: number, format: double, minimum: 0, maximum: 1 }
+        unusualFrequency: { type: number, format: double, minimum: 0, maximum: 1 }
+        vendorAnomaly: { type: number, format: double, minimum: 0, maximum: 1 }
+
+    BandThresholds:
+      type: object
+      required: [low, high]
+      additionalProperties: false
+      description: FR-008 / FR-009.
+      properties:
+        low: { type: number, format: double, exclusiveMinimum: 0, exclusiveMaximum: 1 }
+        high: { type: number, format: double, exclusiveMinimum: 0, exclusiveMaximum: 1 }
+
+    BandCounts:
+      type: object
+      required: [high, medium, low]
+      additionalProperties: false
+      properties:
+        high: { type: integer, minimum: 0 }
+        medium: { type: integer, minimum: 0 }
+        low: { type: integer, minimum: 0 }
+
+    ConfidenceBand:
+      type: string
+      enum: [High, Medium, Low]
+
+    FraudPattern:
+      type: string
+      enum: [ThresholdGaming, UnusualFrequency, VendorAnomaly]
+
+    Employee:
+      type: object
+      required: [employeeId, name, department, role, baselineMonthlyExpense]
+      additionalProperties: false
+      properties:
+        employeeId: { type: string, format: uuid }
+        name: { type: string }
+        department: { type: string }
+        role: { type: string }
+        baselineMonthlyExpense: { type: number, format: double, minimum: 0 }
+        typicalCategories:
+          type: array
+          items: { type: string }
+        typicalVendors:
+          type: array
+          items: { type: string }
+
+    ExpenseRecord:
+      type: object
+      required: [recordId, employeeId, submittedUtc, amount, category, vendor]
+      additionalProperties: false
+      description: |
+        Note: `isInjectedFraud` and `injectedPattern` are present **only** in
+        the full Run blob; they are stripped from any payload sent to the AI
+        investigator (data-model invariant 1).
+      properties:
+        recordId: { type: string, format: uuid }
+        employeeId: { type: string, format: uuid }
+        submittedUtc: { type: string, format: date-time }
+        amount: { type: number, format: double, minimum: 0 }
+        category: { type: string }
+        vendor: { type: string }
+        isInjectedFraud: { type: boolean }
+        injectedPattern:
+          allOf:
+            - $ref: "#/components/schemas/FraudPattern"
+          nullable: true
+
+    FeatureContribution:
+      type: object
+      required: [name, value, zScore]
+      additionalProperties: false
+      properties:
+        name: { type: string }
+        value: { type: number, format: double }
+        zScore: { type: number, format: double }
+
+    DetectionResult:
+      type: object
+      required: [recordId, rawScore, confidence, band, contributingFeatures]
+      additionalProperties: false
+      properties:
+        recordId: { type: string, format: uuid }
+        rawScore: { type: number, format: double }
+        confidence:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+        band: { $ref: "#/components/schemas/ConfidenceBand" }
+        contributingFeatures:
+          type: array
+          items: { $ref: "#/components/schemas/FeatureContribution" }
+
+    InvestigationStatus:
+      type: string
+      enum: [Succeeded, Unavailable]
+
+    FraudLikelihood:
+      type: string
+      enum: [Likely, Unlikely, Inconclusive]
+
+    AiInvestigationResult:
+      type: object
+      required: [recordId, runId, requestedUtc, status]
+      additionalProperties: false
+      description: |
+        FR-012 — when `status = "Succeeded"`, all of `verdict`, `rationale`,
+        `keySignals`, `recommendedAction` MUST be present (SC-008). When
+        `status = "Unavailable"`, `unavailableReason` MUST be present and
+        the four success fields MUST be omitted (FR-014).
+      properties:
+        recordId: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        requestedUtc: { type: string, format: date-time }
+        completedUtc:
+          type: string
+          format: date-time
+          nullable: true
+        status: { $ref: "#/components/schemas/InvestigationStatus" }
+        verdict:
+          allOf: [{ $ref: "#/components/schemas/FraudLikelihood" }]
+          nullable: true
+        rationale:
+          type: string
+          nullable: true
+          maxLength: 2000
+        keySignals:
+          type: array
+          nullable: true
+          minItems: 1
+          maxItems: 10
+          items: { type: string }
+        recommendedAction:
+          type: string
+          nullable: true
+        unavailableReason:
+          type: string
+          nullable: true
+
+    Case:
+      type: object
+      required: [expense, employee, detection]
+      additionalProperties: false
+      properties:
+        expense: { $ref: "#/components/schemas/ExpenseRecord" }
+        employee: { $ref: "#/components/schemas/Employee" }
+        detection: { $ref: "#/components/schemas/DetectionResult" }
+        investigation:
+          allOf: [{ $ref: "#/components/schemas/AiInvestigationResult" }]
+          nullable: true
+
+    Run:
+      type: object
+      required:
+        - runId
+        - ownerId
+        - createdUtc
+        - configuration
+        - employees
+        - expenses
+        - detectionResults
+        - investigations
+        - bandCounts
+      additionalProperties: false
+      properties:
+        runId: { type: string, format: uuid }
+        ownerId:
+          type: string
+          description: |
+            FR-025 placeholder; constant `"v1"` until per-user scoping ships.
+        createdUtc: { type: string, format: date-time }
+        configuration: { $ref: "#/components/schemas/SimulationConfiguration" }
+        employees:
+          type: array
+          items: { $ref: "#/components/schemas/Employee" }
+        expenses:
+          type: array
+          items: { $ref: "#/components/schemas/ExpenseRecord" }
+        detectionResults:
+          type: array
+          items: { $ref: "#/components/schemas/DetectionResult" }
+        investigations:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AiInvestigationResult"
+          description: |
+            Map keyed by `recordId` (the Case's underlying ExpenseRecord).
+        bandCounts: { $ref: "#/components/schemas/BandCounts" }
+
+    RunSummary:
+      type: object
+      required:
+        - runId
+        - createdUtc
+        - recordCount
+        - bandCounts
+        - intensity
+        - patternWeights
+        - investigationCount
+      additionalProperties: false
+      properties:
+        runId: { type: string, format: uuid }
+        createdUtc: { type: string, format: date-time }
+        recordCount: { type: integer, minimum: 1 }
+        bandCounts: { $ref: "#/components/schemas/BandCounts" }
+        intensity: { type: number, format: double }
+        patternWeights: { $ref: "#/components/schemas/PatternWeights" }
+        investigationCount: { type: integer, minimum: 0 }
+
+    RunSummaryPage:
+      type: object
+      required: [items]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/RunSummary" }
+        continuationToken:
+          type: string
+          nullable: true

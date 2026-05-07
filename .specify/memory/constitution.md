@@ -1,39 +1,36 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (uninitialized template) → 1.0.0
-Bump rationale: Initial ratification of the project constitution. All placeholder
-tokens replaced with concrete principles supplied by the project owner.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR — adding a new binding principle (XII. Library-First
+Algorithms) that did not exist in 1.0.0. No existing MUSTs were redefined or
+removed, so this is additive.
 
-Modified principles:
-  - [PRINCIPLE_1_NAME] → I. Platform & Deployment
-  - [PRINCIPLE_2_NAME] → II. Source Control & CI/CD
-  - [PRINCIPLE_3_NAME] → III. AI & Agent Framework
-  - [PRINCIPLE_4_NAME] → IV. Security & Identity
-  - [PRINCIPLE_5_NAME] → V. Code Quality & Architecture
+Modified principles: none of the existing principles I–XI changed.
 
-Added sections (beyond the 5-principle template):
-  - VI. Testing Requirements
-  - VII. Documentation
-  - VIII. Observability & Reliability
-  - IX. Configuration & Flexibility
-  - X. Performance Expectations
-  - XI. Development Experience
-  - Governance
+Added sections:
+  - XII. Library-First Algorithms
 
-Removed sections: None (template placeholders consolidated into principles above).
+Removed sections: None.
 
 Templates requiring updates:
-  - .specify/templates/plan-template.md          ⚠ pending (Constitution Check
-    section is generic; recommend tailoring gates to principles I, II, IV, V, VI
-    before first feature plan)
+  - .specify/templates/plan-template.md          ⚠ unchanged — the generic
+    Constitution Check section is sufficient; per-feature plans should add a
+    row for Principle XII (the 001-expense-fraud-demo plan does so).
+  - specs/001-expense-fraud-demo/plan.md         ✅ updated alongside this
+    bump (Constitution Check row added; Primary Dependencies updated).
+  - specs/001-expense-fraud-demo/research.md     ✅ updated alongside this
+    bump (R5 rewritten to use ML.NET instead of custom code).
   - .specify/templates/spec-template.md          ✅ no changes required
   - .specify/templates/tasks-template.md         ✅ no changes required
   - .specify/templates/checklist-template.md     ✅ no changes required
-  - README.md                                    ⚠ pending (not yet present;
-    create alongside /docs per Principle VII)
 
-Follow-up TODOs: None. Ratification date set to today (initial adoption).
+Follow-up TODOs: None.
+
+--- prior bump entry retained for history ---
+Version change: (uninitialized template) → 1.0.0
+Bump rationale: Initial ratification of the project constitution. All placeholder
+tokens replaced with concrete principles supplied by the project owner.
 -->
 
 # Fraud AI Demo Constitution
@@ -173,6 +170,35 @@ script flow).
 **Rationale**: Friction in the inner loop is paid back as drift between local
 and deployed behavior — a fatal flaw for a demo project.
 
+### XII. Library-First Algorithms
+
+For non-trivial algorithmic work — specifically anomaly detection, scoring,
+statistical modeling, machine-learning pipelines, and similar standard
+techniques — the system MUST use a popular, well-maintained open-source
+library instead of building a custom implementation. "Popular and
+well-maintained" means: actively released within the last 12 months, broad
+community use (e.g., a recognized package on a major registry), and an
+OSI-approved license compatible with this project.
+
+Custom implementations of standard algorithms are PROHIBITED on `main` unless
+**all** of the following hold and are documented in the relevant `plan.md`
+"Complexity Tracking" section: (a) no library covering the need exists, (b)
+available libraries impose unacceptable runtime, licensing, or operational
+constraints, and (c) a brief evaluation of at least two candidate libraries
+is recorded in `research.md`.
+
+The boundary around library use MUST follow Principle V: the library is
+invoked behind an interface in the Application layer (e.g., `IAnomalyScorer`)
+so the rest of the system depends on the abstraction, not the package.
+Feature engineering, glue code, and domain-specific data shaping that *feeds*
+a library are not subject to this principle and remain in domain code.
+
+**Rationale**: Reinventing standard ML/statistics primitives wastes effort,
+introduces hard-to-review numerical bugs, and fragments expertise. Using a
+battle-tested library shortens the path to a credible demo and lets the
+team's effort go into the parts that are actually unique — fraud-pattern
+simulation, AI orchestration, and the presenter UX.
+
 ## Governance
 
 This constitution supersedes ad-hoc practices and informal conventions in
@@ -201,4 +227,4 @@ the "Constitution Check" gate of every `plan.md` (before Phase 0 research and
 again after Phase 1 design). Recurring violations of the same principle SHOULD
 trigger an amendment proposal rather than repeated case-by-case justifications.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-06 | **Last Amended**: 2026-05-06
+**Version**: 1.1.0 | **Ratified**: 2026-05-06 | **Last Amended**: 2026-05-06
