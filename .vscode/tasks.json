@@ -1,0 +1,88 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🗄️ Azurite",
+      "type": "shell",
+      "isBackground": true,
+      "command": "npx",
+      "args": ["-y", "azurite", "--silent", "--location", ".azurite", "--debug", ".azurite/debug.log"],
+      "problemMatcher": {
+        "owner": "azurite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^Azurite",
+          "endsPattern": "^Azurite .+ listening"
+        }
+      },
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "echo": true,
+        "showReuseMessage": false,
+        "color": "terminal.ansiCyan"
+      },
+      "icon": { "id": "database", "color": "terminal.ansiCyan" }
+    },
+    {
+      "label": "⚡ Functions API",
+      "type": "shell",
+      "isBackground": true,
+      "command": "lsof -ti:7071 | xargs -r kill -9 2>/dev/null; sleep 0.5; func start",
+      "options": { "cwd": "${workspaceFolder}/backend/src/Functions" },
+      "problemMatcher": {
+        "owner": "functions",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^Azure Functions Core Tools",
+          "endsPattern": "For detailed output, run func with --verbose flag"
+        }
+      },
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "echo": true,
+        "showReuseMessage": false,
+        "color": "terminal.ansiGreen"
+      },
+      "icon": { "id": "zap", "color": "terminal.ansiGreen" }
+    },
+    {
+      "label": "🌐 Vite Frontend",
+      "type": "shell",
+      "isBackground": true,
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\s+VITE",
+          "endsPattern": "ready in"
+        }
+      },
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "echo": true,
+        "showReuseMessage": false,
+        "color": "terminal.ansiMagenta"
+      },
+      "icon": { "id": "globe", "color": "terminal.ansiMagenta" }
+    },
+    {
+      "label": "🚀 Dev: All",
+      "dependsOn": ["🗄️ Azurite", "⚡ Functions API", "🌐 Vite Frontend"],
+      "problemMatcher": [],
+      "runOptions": { "runOn": "default" },
+      "icon": { "id": "rocket", "color": "terminal.ansiYellow" }
+    }
+  ]
+}

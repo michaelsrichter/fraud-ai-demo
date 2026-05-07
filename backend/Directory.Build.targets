@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Patch: Azure Functions Worker SDK ≤ 2.0.0 does not recognize net10.0.
+    Inject the tooling suffix after the SDK's PropertyGroup evaluates to empty.
+  -->
+  <PropertyGroup Condition="'$(_ToolingSuffix)' == '' AND '$(TargetFrameworkVersion)' == 'v10.0' AND $(AzureFunctionsVersion.StartsWith('v4'))">
+    <_ToolingSuffix>net9-isolated</_ToolingSuffix>
+    <FunctionsToolingSuffix Condition="'$(FunctionsToolingSuffix)' == ''">net9-isolated</FunctionsToolingSuffix>
+  </PropertyGroup>
+</Project>

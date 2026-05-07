@@ -31,17 +31,17 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 **Purpose**: Create the empty repo skeleton, dependencies, and tooling. No business logic yet.
 
-- [ ] T001 Create top-level structure per [plan.md](./plan.md): `backend/`, `frontend/`, `infra/`, `infra/modules/`, `docs/`, `.github/workflows/`
-- [ ] T002 [P] Create `backend/fraud-ai-demo.sln` and empty C# projects: `backend/src/Domain/Domain.csproj`, `backend/src/Application/Application.csproj`, `backend/src/Infrastructure/Infrastructure.csproj`, `backend/src/Functions/Functions.csproj` (Functions = .NET 9 isolated worker, others = `net9.0`); add solution-wide `Directory.Build.props` enabling nullable + treat-warnings-as-errors
-- [ ] T003 [P] Create empty xUnit test projects: `backend/tests/unit/Domain.Tests/Domain.Tests.csproj`, `backend/tests/unit/Application.Tests/Application.Tests.csproj`, `backend/tests/unit/Infrastructure.Tests/Infrastructure.Tests.csproj`; reference xUnit, Moq, FluentAssertions, Microsoft.NET.Test.Sdk; add to solution
-- [ ] T004 [P] Add NuGet package references in `backend/src/Functions/Functions.csproj` (**all GA versions only — Constitution III**; pin minimum versions to the latest GA available at implementation time, e.g.): `Microsoft.Azure.Functions.Worker` (>= 2.0.0), `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore` (>= 2.0.0), `Microsoft.Extensions.Hosting` (>= 9.0.0), `Microsoft.Extensions.DependencyInjection` (>= 9.0.0), `Microsoft.ApplicationInsights.WorkerService` (>= 2.22.0). **No `-preview`, `-rc`, `-alpha`, or `-beta` suffixes permitted.** CI must `grep -E '\-(preview|rc|alpha|beta)' **/*.csproj` and fail if any match.
-- [ ] T005 [P] Add NuGet package references in `backend/src/Infrastructure/Infrastructure.csproj` (**all GA versions only — Constitution III & XII**): `Azure.Identity` (>= 1.13.0), `Azure.Storage.Blobs` (>= 12.22.0), `Azure.Data.Tables` (>= 12.9.0), `Microsoft.ML` (>= 4.0.0, Principle XII), `Microsoft.Agents.AI` (>= 1.0.0 GA, Principle III), `Microsoft.Agents.AI.OpenAI` (>= 1.0.0 GA, Principle III). **No preview SDKs.** Treat the assumption "GA as of 2026-05-06" as the floor; bump floors only when a newer GA is published.
-- [ ] T006 [P] Scaffold the React+Vite+TS app at `frontend/` with `npm create vite@latest -- --template react-ts`; commit generated files; add deps `react-router-dom`, `@tanstack/react-query`, `zod`, `recharts`; dev deps `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`, `openapi-typescript`; configure `vite.config.ts` proxy `'/api': 'http://localhost:7071'`
-- [ ] T007 [P] Create `frontend/tests/setup.ts` (jest-dom imports), update `vite.config.ts` to register Vitest with `environment: 'jsdom'` and `setupFiles: './tests/setup.ts'`; add `npm test` script
-- [ ] T008 [P] Create `azure.yaml` at repo root configured for `azd` with two services: `api` → `backend/src/Functions` (host: `function`, language: `dotnet-isolated`) and `web` → `frontend` (host: `staticwebapp`, dist: `dist`)
-- [ ] T009 [P] Create `backend/src/Functions/local.settings.template.json` with non-secret defaults (`AzureWebJobsStorage=UseDevelopmentStorage=true`, `Foundry__Endpoint=`, `Foundry__ModelDeploymentName=gpt-fraud-investigator`, `Detection__DefaultLowThreshold=0.55`, `Detection__DefaultHighThreshold=0.85`); confirm `local.settings.json` is gitignored
-- [ ] T010 [P] Create `.editorconfig` at repo root (4-space C#, 2-space TS/JSON/YAML, LF, final newline) and `frontend/.eslintrc.cjs` + `frontend/.prettierrc.json`
-- [ ] T011 [P] Create initial `docs/README.md` placeholder linking to forthcoming `docs/architecture.md`, `docs/setup.md`, `docs/deployment.md`, `docs/components.md`, `docs/api.md` (Principle VII)
+- [X] T001 Create top-level structure per [plan.md](./plan.md): `backend/`, `frontend/`, `infra/`, `infra/modules/`, `docs/`, `.github/workflows/`
+- [X] T002 [P] Create `backend/fraud-ai-demo.sln` and empty C# projects: `backend/src/Domain/Domain.csproj`, `backend/src/Application/Application.csproj`, `backend/src/Infrastructure/Infrastructure.csproj`, `backend/src/Functions/Functions.csproj` (Functions = .NET 9 isolated worker, others = `net9.0`); add solution-wide `Directory.Build.props` enabling nullable + treat-warnings-as-errors
+- [X] T003 [P] Create empty xUnit test projects: `backend/tests/unit/Domain.Tests/Domain.Tests.csproj`, `backend/tests/unit/Application.Tests/Application.Tests.csproj`, `backend/tests/unit/Infrastructure.Tests/Infrastructure.Tests.csproj`; reference xUnit, Moq, FluentAssertions, Microsoft.NET.Test.Sdk; add to solution
+- [X] T004 [P] Add NuGet package references in `backend/src/Functions/Functions.csproj` (**all GA versions only — Constitution III**; pin minimum versions to the latest GA available at implementation time, e.g.): `Microsoft.Azure.Functions.Worker` (>= 2.0.0), `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore` (>= 2.0.0), `Microsoft.Extensions.Hosting` (>= 9.0.0), `Microsoft.Extensions.DependencyInjection` (>= 9.0.0), `Microsoft.ApplicationInsights.WorkerService` (>= 2.22.0). **No `-preview`, `-rc`, `-alpha`, or `-beta` suffixes permitted.** CI must `grep -E '\-(preview|rc|alpha|beta)' **/*.csproj` and fail if any match.
+- [X] T005 [P] Add NuGet package references in `backend/src/Infrastructure/Infrastructure.csproj` (**all GA versions only — Constitution III & XII**): `Azure.Identity` (>= 1.13.0), `Azure.Storage.Blobs` (>= 12.22.0), `Azure.Data.Tables` (>= 12.9.0), `Microsoft.ML` (>= 4.0.0, Principle XII), `Microsoft.Agents.AI` (>= 1.0.0 GA, Principle III), `Microsoft.Agents.AI.OpenAI` (>= 1.0.0 GA, Principle III). **No preview SDKs.** Treat the assumption "GA as of 2026-05-06" as the floor; bump floors only when a newer GA is published.
+- [X] T006 [P] Scaffold the React+Vite+TS app at `frontend/` with `npm create vite@latest -- --template react-ts`; commit generated files; add deps `react-router-dom`, `@tanstack/react-query`, `zod`, `recharts`; dev deps `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`, `openapi-typescript`; configure `vite.config.ts` proxy `'/api': 'http://localhost:7071'`
+- [X] T007 [P] Create `frontend/tests/setup.ts` (jest-dom imports), update `vite.config.ts` to register Vitest with `environment: 'jsdom'` and `setupFiles: './tests/setup.ts'`; add `npm test` script
+- [X] T008 [P] Create `azure.yaml` at repo root configured for `azd` with two services: `api` → `backend/src/Functions` (host: `function`, language: `dotnet-isolated`) and `web` → `frontend` (host: `staticwebapp`, dist: `dist`)
+- [X] T009 [P] Create `backend/src/Functions/local.settings.template.json` with non-secret defaults (`AzureWebJobsStorage=UseDevelopmentStorage=true`, `Foundry__Endpoint=`, `Foundry__ModelDeploymentName=gpt-fraud-investigator`, `Detection__DefaultLowThreshold=0.55`, `Detection__DefaultHighThreshold=0.85`); confirm `local.settings.json` is gitignored
+- [X] T010 [P] Create `.editorconfig` at repo root (4-space C#, 2-space TS/JSON/YAML, LF, final newline) and `frontend/.eslintrc.cjs` + `frontend/.prettierrc.json`
+- [X] T011 [P] Create initial `docs/README.md` placeholder linking to forthcoming `docs/architecture.md`, `docs/setup.md`, `docs/deployment.md`, `docs/components.md`, `docs/api.md` (Principle VII)
 
 ---
 
@@ -53,43 +53,43 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### IaC & deployment plumbing (Constitution I, II, IV)
 
-- [ ] T012 Author `infra/abbreviations.json` (azd standard) and `infra/main.parameters.json` with parameters: `environmentName`, `location`, `principalId` (the deploying user's object ID), `gptModelName` (default `gpt-4.1`), `gptModelVersion`
-- [ ] T013 Author `infra/modules/storage.bicep`: one Storage account (StorageV2, Standard_LRS, TLS 1.2, no shared-key access), one blob container `runs`, one table `RunIndex`; outputs `storageAccountName`, `blobEndpoint`, `tableEndpoint`
-- [ ] T014 [P] Author `infra/modules/foundry.bicep`: `Microsoft.CognitiveServices/accounts` of kind `OpenAI` + a `deployments` child named `gpt-fraud-investigator` mapped to `gptModelName`/`gptModelVersion`; outputs `endpoint`, `deploymentName`
-- [ ] T015 [P] Author `infra/modules/functions.bicep`: Application Insights + Log Analytics workspace; Flex Consumption plan (Linux); Function App (.NET 9 isolated, system-assigned Managed Identity); app settings wire `Storage__BlobEndpoint`, `Storage__TableEndpoint`, `Foundry__Endpoint`, `Foundry__ModelDeploymentName`, `APPLICATIONINSIGHTS_CONNECTION_STRING`; outputs `functionAppName`, `principalId` (the MI), `defaultHostName`
-- [ ] T016 [P] Author `infra/modules/staticwebapp.bicep`: Azure Static Web App (Standard tier) linked to the Function App as backend; outputs `defaultHostname`
-- [ ] T017 Author `infra/modules/rbac.bicep`: role assignments for `Storage Blob Data Contributor`, `Storage Table Data Contributor`, and `Cognitive Services OpenAI User` granted to **both** the Function App's MI (`functionsPrincipalId`) and the deploying user (`principalId`) — covers Principle IV's "signed-in user gets dev access via Bicep"
-- [ ] T018 Author `infra/main.bicep` (subscription-scoped): create resource group, then call `storage.bicep`, `foundry.bicep`, `functions.bicep`, `staticwebapp.bicep`, `rbac.bicep` in dependency order; pipe outputs as `azd` env outputs (`SERVICE_API_NAME`, `SERVICE_WEB_NAME`, `STORAGE_ACCOUNT_NAME`, `FOUNDRY_ENDPOINT`, etc.)
+- [X] T012 Author `infra/abbreviations.json` (azd standard) and `infra/main.parameters.json` with parameters: `environmentName`, `location`, `principalId` (the deploying user's object ID), `gptModelName` (default `gpt-4.1`), `gptModelVersion`
+- [X] T013 Author `infra/modules/storage.bicep`: one Storage account (StorageV2, Standard_LRS, TLS 1.2, no shared-key access), one blob container `runs`, one table `RunIndex`; outputs `storageAccountName`, `blobEndpoint`, `tableEndpoint`
+- [X] T014 [P] Author `infra/modules/foundry.bicep`: `Microsoft.CognitiveServices/accounts` of kind `OpenAI` + a `deployments` child named `gpt-fraud-investigator` mapped to `gptModelName`/`gptModelVersion`; outputs `endpoint`, `deploymentName`
+- [X] T015 [P] Author `infra/modules/functions.bicep`: Application Insights + Log Analytics workspace; Flex Consumption plan (Linux); Function App (.NET 9 isolated, system-assigned Managed Identity); app settings wire `Storage__BlobEndpoint`, `Storage__TableEndpoint`, `Foundry__Endpoint`, `Foundry__ModelDeploymentName`, `APPLICATIONINSIGHTS_CONNECTION_STRING`; outputs `functionAppName`, `principalId` (the MI), `defaultHostName`
+- [X] T016 [P] Author `infra/modules/staticwebapp.bicep`: Azure Static Web App (Standard tier) linked to the Function App as backend; outputs `defaultHostname`
+- [X] T017 Author `infra/modules/rbac.bicep`: role assignments for `Storage Blob Data Contributor`, `Storage Table Data Contributor`, and `Cognitive Services OpenAI User` granted to **both** the Function App's MI (`functionsPrincipalId`) and the deploying user (`principalId`) — covers Principle IV's "signed-in user gets dev access via Bicep"
+- [X] T018 Author `infra/main.bicep` (subscription-scoped): create resource group, then call `storage.bicep`, `foundry.bicep`, `functions.bicep`, `staticwebapp.bicep`, `rbac.bicep` in dependency order; pipe outputs as `azd` env outputs (`SERVICE_API_NAME`, `SERVICE_WEB_NAME`, `STORAGE_ACCOUNT_NAME`, `FOUNDRY_ENDPOINT`, etc.)
 
 ### Backend host & DI (Constitution V)
 
-- [ ] T019 Create `backend/src/Functions/Program.cs` — `HostBuilder` configured for Functions isolated worker with Application Insights, `ConfigureServices` registering `IOptions<DemoConfig>` bound from configuration, `DefaultAzureCredential` singleton, all repositories and services (initially as no-op stubs to be replaced by later tasks)
-- [ ] T020 [P] Create `backend/src/Functions/host.json` (extension bundle, default function timeout, AppInsights sampling) and `backend/src/Functions/Properties/launchSettings.json`
+- [X] T019 Create `backend/src/Functions/Program.cs` — `HostBuilder` configured for Functions isolated worker with Application Insights, `ConfigureServices` registering `IOptions<DemoConfig>` bound from configuration, `DefaultAzureCredential` singleton, all repositories and services (initially as no-op stubs to be replaced by later tasks)
+- [X] T020 [P] Create `backend/src/Functions/host.json` (extension bundle, default function timeout, AppInsights sampling) and `backend/src/Functions/Properties/launchSettings.json`
 
 ### Domain primitives (Constitution V; data-model.md)
 
-- [ ] T021 [P] Create `backend/src/Domain/Configuration/SimulationConfiguration.cs`, `BandThresholds.cs`, `PatternWeights.cs`, `BandCounts.cs` — immutable C# records with constructor-side validation matching data-model.md (incl. `PatternWeights` rejecting all-zero or negative; thresholds `0 < Low < High < 1`); cap `RecordCount` at 50 000 (FR-004)
-- [ ] T022 [P] Create `backend/src/Domain/Enums/ConfidenceBand.cs`, `FraudPattern.cs`, `FraudLikelihood.cs`, `InvestigationStatus.cs`
-- [ ] T023 [P] Create `backend/src/Domain/Entities/Employee.cs`, `ExpenseRecord.cs`, `DetectionResult.cs`, `FeatureContribution.cs`, `AiInvestigationResult.cs`, `Run.cs` — immutable records with invariants per data-model.md (`Run.DetectionResults.Count == Run.Expenses.Count`, etc.)
-- [ ] T024 [P] Create `backend/src/Domain/Projections/Case.cs`, `RunSummary.cs` — read-only projection records
-- [ ] T025 [P] Create `backend/tests/unit/Domain.Tests/SimulationConfigurationTests.cs` — xUnit theories covering all validation paths in T021 (FR-002, FR-003, FR-004, FR-008, FR-009, FR-021)
-- [ ] T026 [P] Create `backend/tests/unit/Domain.Tests/RunInvariantTests.cs` — verify `Run` rejects mismatched detection-results / expenses count and dangling `Investigations` keys
+- [X] T021 [P] Create `backend/src/Domain/Configuration/SimulationConfiguration.cs`, `BandThresholds.cs`, `PatternWeights.cs`, `BandCounts.cs` — immutable C# records with constructor-side validation matching data-model.md (incl. `PatternWeights` rejecting all-zero or negative; thresholds `0 < Low < High < 1`); cap `RecordCount` at 50 000 (FR-004)
+- [X] T022 [P] Create `backend/src/Domain/Enums/ConfidenceBand.cs`, `FraudPattern.cs`, `FraudLikelihood.cs`, `InvestigationStatus.cs`
+- [X] T023 [P] Create `backend/src/Domain/Entities/Employee.cs`, `ExpenseRecord.cs`, `DetectionResult.cs`, `FeatureContribution.cs`, `AiInvestigationResult.cs`, `Run.cs` — immutable records with invariants per data-model.md (`Run.DetectionResults.Count == Run.Expenses.Count`, etc.)
+- [X] T024 [P] Create `backend/src/Domain/Projections/Case.cs`, `RunSummary.cs` — read-only projection records
+- [X] T025 [P] Create `backend/tests/unit/Domain.Tests/SimulationConfigurationTests.cs` — xUnit theories covering all validation paths in T021 (FR-002, FR-003, FR-004, FR-008, FR-009, FR-021)
+- [X] T026 [P] Create `backend/tests/unit/Domain.Tests/RunInvariantTests.cs` — verify `Run` rejects mismatched detection-results / expenses count and dangling `Investigations` keys
 
 ### Application abstractions (Constitution V)
 
-- [ ] T027 [P] Create `backend/src/Application/Abstractions/IFraudInjector.cs`, `IAnomalyScorer.cs`, `IAiInvestigator.cs`, `IRunRepository.cs`, `IClock.cs`, `IRandomSource.cs` — interfaces only; no implementations yet (these are the seams that Principle V + Principle VI require)
+- [X] T027 [P] Create `backend/src/Application/Abstractions/IFraudInjector.cs`, `IAnomalyScorer.cs`, `IAiInvestigator.cs`, `IRunRepository.cs`, `IClock.cs`, `IRandomSource.cs` — interfaces only; no implementations yet (these are the seams that Principle V + Principle VI require)
 
 ### Observability & error handling (Constitution VIII)
 
-- [ ] T028 [P] Create `backend/src/Functions/ErrorHandling/ProblemDetailsResultExtensions.cs` — extension methods to produce RFC 7807 `application/problem+json` 400/404/500 responses (matches `ProblemDetails` schema in `contracts/api.openapi.yaml`); used by every Function in later phases
+- [X] T028 [P] Create `backend/src/Functions/ErrorHandling/ProblemDetailsResultExtensions.cs` — extension methods to produce RFC 7807 `application/problem+json` 400/404/500 responses (matches `ProblemDetails` schema in `contracts/api.openapi.yaml`); used by every Function in later phases
 
 ### Local-dev workflow (Constitution XI)
 
-- [ ] T029 [P] Create `.vscode/tasks.json` with compound `dev: all` running Azurite + `func start` + `npm run dev`; `.vscode/launch.json` with attach configurations for the Functions host and Vite
+- [X] T029 [P] Create `.vscode/tasks.json` with compound `dev: all` running Azurite + `func start` + `npm run dev`; `.vscode/launch.json` with attach configurations for the Functions host and Vite
 
 ### CI/CD (Constitution II)
 
-- [ ] T030 Create `.github/workflows/ci-cd.yml`: jobs `build-test` (runs `dotnet test backend/fraud-ai-demo.sln` and `npm --prefix frontend ci && npm --prefix frontend test -- --run`), `deploy-infra` (`azd provision` via OIDC), `deploy-app` (`azd deploy`); triggered on push to `main`; uses `azure/login@v2` with `client-id`, `tenant-id`, `subscription-id` from repo secrets — **no client secrets**
+- [X] T030 Create `.github/workflows/ci-cd.yml`: jobs `build-test` (runs `dotnet test backend/fraud-ai-demo.sln` and `npm --prefix frontend ci && npm --prefix frontend test -- --run`), `deploy-infra` (`azd provision` via OIDC), `deploy-app` (`azd deploy`); triggered on push to `main`; uses `azure/login@v2` with `client-id`, `tenant-id`, `subscription-id` from repo secrets — **no client secrets**
 
 **Checkpoint**: Foundation done. User-story phases may now start in parallel.
 
@@ -113,18 +113,18 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Backend implementation for User Story 1
 
-- [ ] T036 [US1] Implement `backend/src/Application/Services/FraudInjector.cs` (`IFraudInjector`) — given employees + record count + intensity + weights, produces an `IReadOnlyList<ExpenseRecord>` with per-pattern injections; uses `IRandomSource` for determinism; threshold-gaming, unusual-frequency, vendor-anomaly logic implemented per data-model.md
-- [ ] T037 [P] [US1] Implement `backend/src/Application/Services/EmployeeGenerator.cs` — synthetic profiles (name, dept, role, baseline spend, typical categories, typical vendors); seeded; sized by `SimulationConfiguration.EmployeeCount`
-- [ ] T038 [US1] Implement `backend/src/Application/Services/FraudFeatureBuilder.cs` — pure feature-engineering producing `Features[][]` and feature names from `(Employees, Expenses, Thresholds)` per research §R5; emits the six features `amountZ`, `amountVsThresholdGap`, `frequencyZ`, `vendorRarity`, `categoryDeviation`, `weekendSubmission`; no ML library dependency at this layer
-- [ ] T039 [US1] Implement `backend/src/Infrastructure/Detection/MlNetAnomalyScorer.cs` (`IAnomalyScorer`) — wraps ML.NET `MLContext` + `Trainers.Anomaly.RandomizedPca(rank: 4, ensureZeroMean: true, seed: ...)`; fits on the per-Run feature matrix; transforms; logistic-squashes raw scores into `Confidence ∈ [0,1]` calibrated against the run distribution; emits `DetectionResult` with top-N `ContributingFeatures` recomputed from standardized residuals (research §R5; Principle XII)
-- [ ] T040 [US1] Implement `backend/src/Infrastructure/Persistence/BlobRunRepository.cs` (`IRunRepository`) — `SaveAsync(Run)` writes `runs/{runId}.json.gz` with `If-None-Match: *` (or `If-Match: <etag>` for updates) **and** upserts the matching `RunIndex` row; `LoadAsync(Guid)` reads blob; `ListAsync(take, continuationToken)` queries `RunIndex`; uses `DefaultAzureCredential` and `BlobServiceClient`/`TableServiceClient` constructed from `Storage__BlobEndpoint`/`Storage__TableEndpoint` (Principle IV — no connection strings)
-- [ ] T041 [US1] Implement `backend/src/Application/Services/GenerateRunHandler.cs` — orchestrates: validate config → generate employees → inject expenses → build features → score → assign bands → compute `BandCounts` → persist; returns the saved `Run`
-- [ ] T042 [US1] Implement `backend/src/Functions/Endpoints/GenerateRunFunction.cs` — `POST /api/runs`; deserializes `SimulationConfiguration`; normalizes `PatternWeights` to sum 1.0; returns 201 with `Run` body or 400 problem-details on validation failure (FR-021); per `contracts/api.openapi.yaml` `createRun`
-- [ ] T043 [P] [US1] Implement `backend/src/Functions/Endpoints/GetRunFunction.cs` — `GET /api/runs/{runId}`; returns full `Run` or 404
-- [ ] T044 [P] [US1] Implement `backend/src/Functions/Endpoints/ListRunsFunction.cs` — `GET /api/runs?take=&continuationToken=`; returns `RunSummaryPage`
-- [ ] T045 [P] [US1] Implement `backend/src/Functions/Endpoints/GetCaseFunction.cs` — `GET /api/runs/{runId}/cases/{caseId}`; loads run, projects `Case` by `recordId`, returns 404 if not found
-- [ ] T046 [US1] Wire concrete services into `backend/src/Functions/Program.cs` DI: `IRandomSource` (seeded `System.Random` wrapper), `IClock`, `IFraudInjector`, `IEmployeeGenerator`, `IAnomalyScorer` → `MlNetAnomalyScorer`, `IRunRepository` → `BlobRunRepository`; bind `DemoConfig` from `IConfiguration`
-- [ ] T047 [US1] Add `ILogger<T>` calls in `GenerateRunHandler`, `MlNetAnomalyScorer`, `BlobRunRepository` for "data generation," "detection processing," and persistence (Constitution VIII / SC-007)
+- [X] T036 [US1] Implement `backend/src/Application/Services/FraudInjector.cs` (`IFraudInjector`) — given employees + record count + intensity + weights, produces an `IReadOnlyList<ExpenseRecord>` with per-pattern injections; uses `IRandomSource` for determinism; threshold-gaming, unusual-frequency, vendor-anomaly logic implemented per data-model.md
+- [X] T037 [P] [US1] Implement `backend/src/Application/Services/EmployeeGenerator.cs` — synthetic profiles (name, dept, role, baseline spend, typical categories, typical vendors); seeded; sized by `SimulationConfiguration.EmployeeCount`
+- [X] T038 [US1] Implement `backend/src/Application/Services/FraudFeatureBuilder.cs` — pure feature-engineering producing `Features[][]` and feature names from `(Employees, Expenses, Thresholds)` per research §R5; emits the six features `amountZ`, `amountVsThresholdGap`, `frequencyZ`, `vendorRarity`, `categoryDeviation`, `weekendSubmission`; no ML library dependency at this layer
+- [X] T039 [US1] Implement `backend/src/Infrastructure/Detection/MlNetAnomalyScorer.cs` (`IAnomalyScorer`) — wraps ML.NET `MLContext` + `Trainers.Anomaly.RandomizedPca(rank: 4, ensureZeroMean: true, seed: ...)`; fits on the per-Run feature matrix; transforms; logistic-squashes raw scores into `Confidence ∈ [0,1]` calibrated against the run distribution; emits `DetectionResult` with top-N `ContributingFeatures` recomputed from standardized residuals (research §R5; Principle XII)
+- [X] T040 [US1] Implement `backend/src/Infrastructure/Persistence/BlobRunRepository.cs` (`IRunRepository`) — `SaveAsync(Run)` writes `runs/{runId}.json.gz` with `If-None-Match: *` (or `If-Match: <etag>` for updates) **and** upserts the matching `RunIndex` row; `LoadAsync(Guid)` reads blob; `ListAsync(take, continuationToken)` queries `RunIndex`; uses `DefaultAzureCredential` and `BlobServiceClient`/`TableServiceClient` constructed from `Storage__BlobEndpoint`/`Storage__TableEndpoint` (Principle IV — no connection strings)
+- [X] T041 [US1] Implement `backend/src/Application/Services/GenerateRunHandler.cs` — orchestrates: validate config → generate employees → inject expenses → build features → score → assign bands → compute `BandCounts` → persist; returns the saved `Run`
+- [X] T042 [US1] Implement `backend/src/Functions/Endpoints/GenerateRunFunction.cs` — `POST /api/runs`; deserializes `SimulationConfiguration`; normalizes `PatternWeights` to sum 1.0; returns 201 with `Run` body or 400 problem-details on validation failure (FR-021); per `contracts/api.openapi.yaml` `createRun`
+- [X] T043 [P] [US1] Implement `backend/src/Functions/Endpoints/GetRunFunction.cs` — `GET /api/runs/{runId}`; returns full `Run` or 404
+- [X] T044 [P] [US1] Implement `backend/src/Functions/Endpoints/ListRunsFunction.cs` — `GET /api/runs?take=&continuationToken=`; returns `RunSummaryPage`
+- [X] T045 [P] [US1] Implement `backend/src/Functions/Endpoints/GetCaseFunction.cs` — `GET /api/runs/{runId}/cases/{caseId}`; loads run, projects `Case` by `recordId`, returns 404 if not found
+- [X] T046 [US1] Wire concrete services into `backend/src/Functions/Program.cs` DI: `IRandomSource` (seeded `System.Random` wrapper), `IClock`, `IFraudInjector`, `IEmployeeGenerator`, `IAnomalyScorer` → `MlNetAnomalyScorer`, `IRunRepository` → `BlobRunRepository`; bind `DemoConfig` from `IConfiguration`
+- [X] T047 [US1] Add `ILogger<T>` calls in `GenerateRunHandler`, `MlNetAnomalyScorer`, `BlobRunRepository` for "data generation," "detection processing," and persistence (Constitution VIII / SC-007)
 
 ### Frontend tests for User Story 1 (write FIRST)
 
@@ -134,15 +134,15 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend implementation for User Story 1
 
-- [ ] T051 [US1] Generate `frontend/src/api/types.ts` from `specs/001-expense-fraud-demo/contracts/api.openapi.yaml` via `openapi-typescript`; add an `npm run gen:api` script; commit the generated file
-- [ ] T052 [US1] Implement `frontend/src/api/runsClient.ts` — fetch wrappers using the generated types; runtime-validate responses with zod; centralized error → typed Result
-- [ ] T053 [US1] Implement `frontend/src/lib/queryClient.ts` (TanStack Query) and wrap `App.tsx` in `QueryClientProvider`; configure stale time + retry
-- [ ] T054 [P] [US1] Implement `frontend/src/components/ConfigPanel.tsx` — controls for overall `Intensity` slider + three `PatternWeights` sliders (auto-normalizing) + `RecordCount` numeric input (capped at 50 000) + `Thresholds` low/high sliders; emits `SimulationConfiguration` (FR-017, FR-020, FR-021)
-- [ ] T055 [P] [US1] Implement `frontend/src/components/BandChart.tsx` using `recharts` — renders `BandCounts` as three colored bars (high = red, medium = amber, low = green); empty state per T049
-- [ ] T056 [P] [US1] Implement `frontend/src/components/CaseList.tsx` — virtualized list of cases color-coded by band (FR-016)
-- [ ] T057 [US1] Implement route `frontend/src/routes/RunsRoute.tsx` (`/runs`) — lists prior runs (FR-024), shows ConfigPanel, has "Generate" button that calls `POST /api/runs` and navigates to `/runs/:id`
-- [ ] T058 [US1] Implement route `frontend/src/routes/RunDetailRoute.tsx` (`/runs/:id`) — fetches run, shows `BandChart` + `CaseList`; identifies "active run" badge for the most recent (FR-024)
-- [ ] T059 [US1] Wire routes in `frontend/src/App.tsx` via `react-router-dom`; redirect `/` → `/runs`
+- [X] T051 [US1] Generate `frontend/src/api/types.ts` from `specs/001-expense-fraud-demo/contracts/api.openapi.yaml` via `openapi-typescript`; add an `npm run gen:api` script; commit the generated file
+- [X] T052 [US1] Implement `frontend/src/api/runsClient.ts` — fetch wrappers using the generated types; runtime-validate responses with zod; centralized error → typed Result
+- [X] T053 [US1] Implement `frontend/src/lib/queryClient.ts` (TanStack Query) and wrap `App.tsx` in `QueryClientProvider`; configure stale time + retry
+- [X] T054 [P] [US1] Implement `frontend/src/components/ConfigPanel.tsx` — controls for overall `Intensity` slider + three `PatternWeights` sliders (auto-normalizing) + `RecordCount` numeric input (capped at 50 000) + `Thresholds` low/high sliders; emits `SimulationConfiguration` (FR-017, FR-020, FR-021)
+- [X] T055 [P] [US1] Implement `frontend/src/components/BandChart.tsx` using `recharts` — renders `BandCounts` as three colored bars (high = red, medium = amber, low = green); empty state per T049
+- [X] T056 [P] [US1] Implement `frontend/src/components/CaseList.tsx` — virtualized list of cases color-coded by band (FR-016)
+- [X] T057 [US1] Implement route `frontend/src/routes/RunsRoute.tsx` (`/runs`) — lists prior runs (FR-024), shows ConfigPanel, has "Generate" button that calls `POST /api/runs` and navigates to `/runs/:id`
+- [X] T058 [US1] Implement route `frontend/src/routes/RunDetailRoute.tsx` (`/runs/:id`) — fetches run, shows `BandChart` + `CaseList`; identifies "active run" badge for the most recent (FR-024)
+- [X] T059 [US1] Wire routes in `frontend/src/App.tsx` via `react-router-dom`; redirect `/` → `/runs`
 
 **Checkpoint US1**: Run the full `low → high intensity` narrative end-to-end without any AI dependency. SC-001, SC-002, SC-005, SC-006 measurable.
 
@@ -166,12 +166,12 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Backend implementation for User Story 2
 
-- [ ] T064 [US2] Add `backend/src/Application/Dtos/AiVerdictDto.cs` — JSON DTO matching `AiInvestigationResult` (sans `Status`/`UnavailableReason`) used as the agent's structured-output schema
-- [ ] T065 [US2] Implement `backend/src/Infrastructure/Ai/AgentInvestigator.cs` (`IAiInvestigator`) — constructs a stateless `ChatClientAgent` per call using `Microsoft.Agents.AI.OpenAI` with `AzureOpenAIClient(new Uri(endpoint), DefaultAzureCredential)` and `ChatClient(deploymentName)`; binds structured-output to `AiVerdictDto`; builds the user message per the **5-section prompt payload contract in [research.md §R6](./research.md#r6-ai-orchestration-microsoft-agent-framework-ga-pattern)** (case under review, employee profile, 90-day recent history, peer comparison within `(department, category)` cohort, run context) — all inputs read from the in-memory Run, no extra storage calls; strips `IsInjectedFraud` / `InjectedPattern` per T063; 30 s `CancellationTokenSource` (FR-014); maps success/failure to `AiInvestigationResult.Succeeded`/`AiInvestigationResult.Unavailable(reason)` (FR-011, FR-012, FR-014, Constitution III)
-- [ ] T066 [US2] Implement `backend/src/Application/Services/InvestigateCaseHandler.cs` — loads run; verifies the case exists; calls `IAiInvestigator.InvestigateAsync(case)`; on `Succeeded`, attaches result to `run.Investigations[recordId]`, persists with ETag, retries once on 412; on `Unavailable`, returns the unavailable result without persisting (FR-014)
-- [ ] T067 [US2] Implement `backend/src/Functions/Endpoints/InvestigateCaseFunction.cs` — `POST /api/runs/{runId}/cases/{caseId}/investigate`; returns 200 with `AiInvestigationResult` (success or unavailable), 404 if run/case missing
-- [ ] T068 [US2] Wire `IAiInvestigator` → `AgentInvestigator` in `backend/src/Functions/Program.cs` DI; add app-settings binding for `Foundry__Endpoint` and `Foundry__ModelDeploymentName`
-- [ ] T069 [US2] Add structured `ILogger` calls around the agent call: request submitted, latency, success vs unavailable + reason (Constitution VIII)
+- [X] T064 [US2] Add `backend/src/Application/Dtos/AiVerdictDto.cs` — JSON DTO matching `AiInvestigationResult` (sans `Status`/`UnavailableReason`) used as the agent's structured-output schema
+- [X] T065 [US2] Implement `backend/src/Infrastructure/Ai/AgentInvestigator.cs` (`IAiInvestigator`) — constructs a stateless `ChatClientAgent` per call using `Microsoft.Agents.AI.OpenAI` with `AzureOpenAIClient(new Uri(endpoint), DefaultAzureCredential)` and `ChatClient(deploymentName)`; binds structured-output to `AiVerdictDto`; builds the user message per the **5-section prompt payload contract in [research.md §R6](./research.md#r6-ai-orchestration-microsoft-agent-framework-ga-pattern)** (case under review, employee profile, 90-day recent history, peer comparison within `(department, category)` cohort, run context) — all inputs read from the in-memory Run, no extra storage calls; strips `IsInjectedFraud` / `InjectedPattern` per T063; 30 s `CancellationTokenSource` (FR-014); maps success/failure to `AiInvestigationResult.Succeeded`/`AiInvestigationResult.Unavailable(reason)` (FR-011, FR-012, FR-014, Constitution III)
+- [X] T066 [US2] Implement `backend/src/Application/Services/InvestigateCaseHandler.cs` — loads run; verifies the case exists; calls `IAiInvestigator.InvestigateAsync(case)`; on `Succeeded`, attaches result to `run.Investigations[recordId]`, persists with ETag, retries once on 412; on `Unavailable`, returns the unavailable result without persisting (FR-014)
+- [X] T067 [US2] Implement `backend/src/Functions/Endpoints/InvestigateCaseFunction.cs` — `POST /api/runs/{runId}/cases/{caseId}/investigate`; returns 200 with `AiInvestigationResult` (success or unavailable), 404 if run/case missing
+- [X] T068 [US2] Wire `IAiInvestigator` → `AgentInvestigator` in `backend/src/Functions/Program.cs` DI; add app-settings binding for `Foundry__Endpoint` and `Foundry__ModelDeploymentName`
+- [X] T069 [US2] Add structured `ILogger` calls around the agent call: request submitted, latency, success vs unavailable + reason (Constitution VIII)
 
 ### Frontend tests for User Story 2 (write FIRST)
 
@@ -180,9 +180,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend implementation for User Story 2
 
-- [ ] T072 [US2] Extend `frontend/src/api/runsClient.ts` with `investigateCase(runId, caseId): Promise<AiInvestigationResult>`
-- [ ] T073 [P] [US2] Implement `frontend/src/components/AiVerdictPanel.tsx` — renders both `Succeeded` and `Unavailable` states with clear visual distinction (FR-014)
-- [ ] T074 [US2] Add an "Investigate with AI" button to the case-detail UI (introduced fully in US3) calling `investigateCase` via TanStack Query mutation; show inline spinner while pending; on success, invalidate the run query so the panel re-renders with the persisted result; **enabled on all bands** with a "(suggested)" hint on Medium (clarification 1)
+- [X] T072 [US2] Extend `frontend/src/api/runsClient.ts` with `investigateCase(runId, caseId): Promise<AiInvestigationResult>`
+- [X] T073 [P] [US2] Implement `frontend/src/components/AiVerdictPanel.tsx` — renders both `Succeeded` and `Unavailable` states with clear visual distinction (FR-014)
+- [X] T074 [US2] Add an "Investigate with AI" button to the case-detail UI (introduced fully in US3) calling `investigateCase` via TanStack Query mutation; show inline spinner while pending; on success, invalidate the run query so the panel re-renders with the persisted result; **enabled on all bands** with a "(suggested)" hint on Medium (clarification 1)
 
 **Checkpoint US2**: AI investigation returns structured results live; outage path returns the fallback state without crashing the UI.
 
@@ -202,9 +202,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Frontend implementation for User Story 3
 
-- [ ] T076 [US3] Implement `frontend/src/components/CaseDetail.tsx` — left column: expense + employee context; middle: numeric score, band badge, ContributingFeatures table sorted by `|zScore|`; right (collapsible): `AiVerdictPanel` from US2
-- [ ] T077 [US3] Implement route `frontend/src/routes/CaseDetailRoute.tsx` (`/runs/:id/cases/:caseId`) — fetches the case via `GET /api/runs/{runId}/cases/{caseId}`, renders `CaseDetail`, hosts the "Investigate with AI" mutation from US2 task T074
-- [ ] T078 [US3] Wire the route in `App.tsx` and make `CaseList` rows navigate to it
+- [X] T076 [US3] Implement `frontend/src/components/CaseDetail.tsx` — left column: expense + employee context; middle: numeric score, band badge, ContributingFeatures table sorted by `|zScore|`; right (collapsible): `AiVerdictPanel` from US2
+- [X] T077 [US3] Implement route `frontend/src/routes/CaseDetailRoute.tsx` (`/runs/:id/cases/:caseId`) — fetches the case via `GET /api/runs/{runId}/cases/{caseId}`, renders `CaseDetail`, hosts the "Investigate with AI" mutation from US2 task T074
+- [X] T078 [US3] Wire the route in `App.tsx` and make `CaseList` rows navigate to it
 
 **Checkpoint US3**: Detail view works for any case independently of AI; integrates seamlessly with US2 when an investigation exists.
 
@@ -226,9 +226,9 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 ### Implementation for User Story 4
 
-- [ ] T082 [US4] Harden `ConfigPanel.tsx` (T054) with explicit per-field validation matching the rules in T079; debounced onChange; "(saved)" indicator after a successful Generate
-- [ ] T083 [US4] Add quick-preset buttons to `ConfigPanel` ("Low fraud," "High fraud — vendor heavy," "High fraud — frequency heavy") that load preset `SimulationConfiguration` values to support rapid scenario flipping (SC-009)
-- [ ] T084 [US4] Ensure `GenerateRunFunction` returns RFC 7807 problem-details with field-level `errors` (per `ProblemDetails` schema in `contracts/api.openapi.yaml`) on every validation failure, and that `ConfigPanel` surfaces those errors (FR-021)
+- [X] T082 [US4] Harden `ConfigPanel.tsx` (T054) with explicit per-field validation matching the rules in T079; debounced onChange; "(saved)" indicator after a successful Generate
+- [X] T083 [US4] Add quick-preset buttons to `ConfigPanel` ("Low fraud," "High fraud — vendor heavy," "High fraud — frequency heavy") that load preset `SimulationConfiguration` values to support rapid scenario flipping (SC-009)
+- [X] T084 [US4] Ensure `GenerateRunFunction` returns RFC 7807 problem-details with field-level `errors` (per `ProblemDetails` schema in `contracts/api.openapi.yaml`) on every validation failure, and that `ConfigPanel` surfaces those errors (FR-021)
 
 **Checkpoint US4**: Presenters can flip between scenarios in seconds without restarts (SC-009).
 
@@ -238,15 +238,15 @@ description: "Task list for AI-Powered Internal Expense Fraud Demo"
 
 **Purpose**: Ship-quality concerns that affect every story.
 
-- [ ] T085 [P] Author `docs/architecture.md` — system diagram (frontend / SWA / Functions / Storage / Foundry), data-flow (generate → detect → investigate), data model summary, identity & RBAC story (Constitution VII)
-- [ ] T086 [P] Author `docs/setup.md` — productized version of [quickstart.md](./quickstart.md), including Azurite + `func start` + Vite walkthrough
-- [ ] T087 [P] Author `docs/deployment.md` — `azd up` walkthrough, OIDC / `azd pipeline config`, teardown with `azd down --purge`
-- [ ] T088 [P] Author `docs/components.md` — per-folder responsibilities (Domain / Application / Infrastructure / Functions / frontend / infra)
-- [ ] T089 [P] Author `docs/api.md` — narrative description of the 5 endpoints with examples; cross-link to `contracts/api.openapi.yaml`
+- [X] T085 [P] Author `docs/architecture.md` — system diagram (frontend / SWA / Functions / Storage / Foundry), data-flow (generate → detect → investigate), data model summary, identity & RBAC story (Constitution VII)
+- [X] T086 [P] Author `docs/setup.md` — productized version of [quickstart.md](./quickstart.md), including Azurite + `func start` + Vite walkthrough
+- [X] T087 [P] Author `docs/deployment.md` — `azd up` walkthrough, OIDC / `azd pipeline config`, teardown with `azd down --purge`
+- [X] T088 [P] Author `docs/components.md` — per-folder responsibilities (Domain / Application / Infrastructure / Functions / frontend / infra)
+- [X] T089 [P] Author `docs/api.md` — narrative description of the 5 endpoints with examples; cross-link to `contracts/api.openapi.yaml`
 - [ ] T090 [P] Add inline XML doc comments on every public type/method in `Domain`, `Application/Abstractions`, and on the agent-prompt-construction code in `AgentInvestigator` (Constitution VII — non-obvious logic)
 - [ ] T091 Add a `backend/tests/unit/Application.Tests/PerformanceSmokeTests.cs` `[Fact(Skip="manual")]` benchmark asserting generate+detect ≤ 5 s for 5 000 records on a local box (SC-002 sanity check)
 - [ ] T092 Run `quickstart.md` end-to-end manually as the final acceptance gate; check every Constitution row in plan.md still PASSes (Principle XI)
-- [ ] T093 [P] Update top-level `README.md` with a one-paragraph project description and links into `docs/`
+- [X] T093 [P] Update top-level `README.md` with a one-paragraph project description and links into `docs/`
 
 ---
 

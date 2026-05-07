@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FraudDemo.Domain</RootNamespace>
+    <AssemblyName>FraudDemo.Domain</AssemblyName>
+  </PropertyGroup>
+</Project>

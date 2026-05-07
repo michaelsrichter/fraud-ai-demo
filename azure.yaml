@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: fraud-ai-demo
+metadata:
+  template: fraud-ai-demo@0.1.0
+services:
+  api:
+    project: ./backend/src/Functions
+    language: dotnet
+    host: function
+  web:
+    project: ./frontend
+    language: ts
+    host: staticwebapp
+    dist: dist
+hooks:
+  prepackage:
+    web:
+      shell: sh
+      run: npm ci && npm run build

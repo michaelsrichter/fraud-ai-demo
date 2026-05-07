@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Functions": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "launchBrowser": false
+    }
+  }
+}

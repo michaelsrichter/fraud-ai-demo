@@ -115,6 +115,7 @@ obj/
 __azurite_db*__.json
 __blobstorage__/
 __queuestorage__/
+.azurite/
 
 # =============================================================================
 # Node / React (CRA, Vite, Next.js, generic)

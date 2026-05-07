@@ -1,0 +1,263 @@
+using System.ClientModel;
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Azure;
+using Azure.AI.OpenAI;
+using Azure.Core;
+using FraudDemo.Application.Abstractions;
+using FraudDemo.Application.Configuration;
+using FraudDemo.Application.Dtos;
+using FraudDemo.Domain.Entities;
+using FraudDemo.Domain.Projections;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenAI.Chat;
+
+namespace FraudDemo.Infrastructure.Ai;
+
+/// <summary>
+/// Stateless ChatClientAgent per request (research §R6) backed by Microsoft Foundry
+/// (Azure OpenAI, Constitution III). Builds the 5-section prompt payload contract.
+/// </summary>
+public sealed class AgentInvestigator : IAiInvestigator
+{
+    private static readonly TimeSpan TimeoutBudget = TimeSpan.FromSeconds(30);
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() },
+    };
+
+    private static readonly string SystemPrompt = """
+        You are a meticulous internal expense fraud investigator. You receive a single
+        synthetic case under review with the employee profile, a 90-day expense history
+        window, peer-cohort statistics, and run-level configuration. Reason about whether
+        the case is likely fraud. Use the Inconclusive verdict for weak/contradictory
+        signals — prefer it over a low-confidence Likely.
+
+        Your reply MUST be a single JSON object — no prose, no markdown fences — matching:
+        {
+          "verdict": "Likely" | "Unlikely" | "Inconclusive",
+          "rationale": string (under 2000 characters),
+          "keySignals": string[] (1 to 10 entries),
+          "recommendedAction": string
+        }
+
+        Do not include any field called isInjectedFraud or injectedPattern.
+        """;
+
+    private readonly FoundryOptions _foundry;
+    private readonly TokenCredential _credential;
+    private readonly ILogger<AgentInvestigator> _logger;
+
+    public AgentInvestigator(IOptions<FoundryOptions> foundry, TokenCredential credential, ILogger<AgentInvestigator> logger)
+    {
+        _foundry = foundry.Value;
+        _credential = credential;
+        _logger = logger;
+    }
+
+    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(caseUnderReview);
+        var requestedUtc = DateTimeOffset.UtcNow;
+
+        if (string.IsNullOrWhiteSpace(_foundry.Endpoint))
+        {
+            _logger.LogWarning("Foundry endpoint not configured; returning Unavailable.");
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "endpoint-not-configured");
+        }
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(TimeoutBudget);
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var azureClient = new AzureOpenAIClient(new Uri(_foundry.Endpoint), _credential);
+            ChatClient chat = azureClient.GetChatClient(_foundry.ModelDeploymentName);
+            IChatClient chatClient = chat.AsIChatClient();
+            var agent = new ChatClientAgent(chatClient, instructions: SystemPrompt);
+
+            var prompt = BuildPrompt(run, caseUnderReview);
+            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} promptLen={Len}",
+                run.RunId, caseUnderReview.Expense.RecordId, prompt.Length);
+
+            var response = await agent.RunAsync(prompt, cancellationToken: cts.Token);
+            sw.Stop();
+            _logger.LogInformation("Investigation succeeded in {Ms} ms", sw.ElapsedMilliseconds);
+
+            var json = ExtractJsonObject(response.Text);
+            var dto = JsonSerializer.Deserialize<AiVerdictDto>(json, JsonOptions);
+            if (dto is null || string.IsNullOrWhiteSpace(dto.Rationale) || dto.KeySignals.Count == 0)
+            {
+                return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "malformed");
+            }
+
+            return AiInvestigationResult.Succeeded(
+                recordId: caseUnderReview.Expense.RecordId,
+                runId: run.RunId,
+                requestedUtc: requestedUtc,
+                completedUtc: DateTimeOffset.UtcNow,
+                verdict: dto.Verdict,
+                rationale: dto.Rationale,
+                keySignals: dto.KeySignals,
+                recommendedAction: dto.RecommendedAction);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Investigation timed out after {Ms} ms", sw.ElapsedMilliseconds);
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "timeout");
+        }
+        catch (RequestFailedException ex)
+        {
+            _logger.LogWarning(ex, "Investigation Foundry RequestFailedException");
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, $"service-error:{ex.Status}");
+        }
+        catch (ClientResultException ex)
+        {
+            _logger.LogWarning(ex, "Investigation Azure.AI.OpenAI ClientResultException");
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, $"service-error:{ex.Status}");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Investigation response JSON parse error");
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "malformed");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Investigation unexpected failure");
+            return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "unexpected");
+        }
+    }
+
+    /// <summary>
+    /// Builds the 5-section prompt payload contract from research.md §R6.
+    /// IMPORTANT: never includes <c>IsInjectedFraud</c> or <c>InjectedPattern</c>.
+    /// </summary>
+    public static string BuildPrompt(Run run, Case c)
+    {
+        var expense = c.Expense;
+        var employee = c.Employee;
+        var detection = c.Detection;
+
+        var employeeExpenses = run.Expenses.Where(e => e.EmployeeId == employee.EmployeeId).ToList();
+        var amountStats = MeanStd(employeeExpenses.Select(e => (double)e.Amount).ToArray());
+
+        var ninetyDayStart = expense.SubmittedUtc.AddDays(-90);
+        var window = employeeExpenses
+            .Where(e => e.SubmittedUtc >= ninetyDayStart && e.SubmittedUtc <= expense.SubmittedUtc)
+            .ToList();
+        var windowAmount = window.Sum(e => (double)e.Amount);
+        var windowDistinctVendors = window.Select(e => e.Vendor).Distinct().Count();
+        var topPriorScores = window
+            .Where(e => e.RecordId != expense.RecordId)
+            .Select(e => new { e.SubmittedUtc, e.Amount, Score = run.DetectionResults.First(d => d.RecordId == e.RecordId).Confidence })
+            .OrderByDescending(e => e.Score)
+            .Take(3)
+            .ToArray();
+
+        var cohort = run.Expenses
+            .Where(e =>
+            {
+                var emp = run.Employees.First(emp2 => emp2.EmployeeId == e.EmployeeId);
+                return emp.Department == employee.Department && e.Category == expense.Category;
+            })
+            .Select(e => (double)e.Amount)
+            .OrderBy(a => a)
+            .ToArray();
+
+        var cohortMedian = Percentile(cohort, 0.5);
+        var cohortP75 = Percentile(cohort, 0.75);
+        var cohortP95 = Percentile(cohort, 0.95);
+        var caseRank = cohort.Length == 0 ? 0d : Array.IndexOf(cohort, (double)expense.Amount);
+        var casePercentile = cohort.Length == 0 ? 0d : (double)caseRank / cohort.Length;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("=== 1. CASE UNDER REVIEW ===");
+        sb.AppendLine($"recordId: {expense.RecordId:D}");
+        sb.AppendLine($"submittedUtc: {expense.SubmittedUtc:O}");
+        sb.AppendLine($"amount: {expense.Amount:F2}");
+        sb.AppendLine($"category: {expense.Category}");
+        sb.AppendLine($"vendor: {expense.Vendor}");
+        sb.AppendLine($"detection.confidence: {detection.Confidence:F4}");
+        sb.AppendLine($"detection.band: {detection.Band}");
+        sb.AppendLine("detection.topFeatures:");
+        foreach (var f in detection.ContributingFeatures)
+        {
+            sb.AppendLine($"  - {f.Name}: value={f.Value:F4} z={f.ZScore:F4}");
+        }
+
+        sb.AppendLine("=== 2. EMPLOYEE PROFILE ===");
+        sb.AppendLine($"name: {employee.Name}");
+        sb.AppendLine($"department: {employee.Department}");
+        sb.AppendLine($"role: {employee.Role}");
+        sb.AppendLine($"baselineMonthlyExpense: {employee.BaselineMonthlyExpense:F2}");
+        sb.AppendLine($"historicalMeanAmount: {amountStats.mean:F2}");
+        sb.AppendLine($"historicalStdAmount: {amountStats.std:F2}");
+
+        sb.AppendLine("=== 3. RECENT 90-DAY HISTORY ===");
+        sb.AppendLine($"submissions: {window.Count}");
+        sb.AppendLine($"totalAmount: {windowAmount:F2}");
+        sb.AppendLine($"distinctVendors: {windowDistinctVendors}");
+        sb.AppendLine("topPriorScores:");
+        foreach (var p in topPriorScores)
+        {
+            sb.AppendLine($"  - submittedUtc={p.SubmittedUtc:O} amount={p.Amount:F2} score={p.Score:F4}");
+        }
+
+        sb.AppendLine("=== 4. PEER COMPARISON (department × category cohort) ===");
+        sb.AppendLine($"cohortSize: {cohort.Length}");
+        sb.AppendLine($"medianAmount: {cohortMedian:F2}");
+        sb.AppendLine($"p75Amount: {cohortP75:F2}");
+        sb.AppendLine($"p95Amount: {cohortP95:F2}");
+        sb.AppendLine($"casePercentile: {casePercentile:F2}");
+
+        sb.AppendLine("=== 5. RUN CONTEXT ===");
+        sb.AppendLine($"runId: {run.RunId:D}");
+        sb.AppendLine($"intensity: {run.Configuration.Intensity:F2}");
+        sb.AppendLine($"weights: T={run.Configuration.PatternWeights.ThresholdGaming:F2} F={run.Configuration.PatternWeights.UnusualFrequency:F2} V={run.Configuration.PatternWeights.VendorAnomaly:F2}");
+        sb.AppendLine($"thresholds: low={run.Configuration.Thresholds.Low:F2} high={run.Configuration.Thresholds.High:F2}");
+        sb.AppendLine("note: This is a synthetic dataset; ground-truth labels exist but are NOT supplied to you.");
+
+        return sb.ToString();
+    }
+
+    private static (double mean, double std) MeanStd(IReadOnlyList<double> values)
+    {
+        if (values.Count == 0) return (0d, 0d);
+        var mean = values.Average();
+        var variance = values.Sum(v => (v - mean) * (v - mean)) / values.Count;
+        return (mean, Math.Sqrt(variance));
+    }
+
+    private static double Percentile(IReadOnlyList<double> sorted, double q)
+    {
+        if (sorted.Count == 0) return 0d;
+        var idx = (int)Math.Clamp(Math.Floor(q * sorted.Count), 0, sorted.Count - 1);
+        return sorted[idx];
+    }
+
+    /// <summary>Strips optional code-fence wrappers and isolates the JSON object body.</summary>
+    private static string ExtractJsonObject(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return "{}";
+        var trimmed = text.Trim();
+        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstNl = trimmed.IndexOf('\n');
+            if (firstNl > 0) trimmed = trimmed[(firstNl + 1)..];
+            var fenceClose = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+            if (fenceClose >= 0) trimmed = trimmed[..fenceClose];
+            trimmed = trimmed.Trim();
+        }
+        var open = trimmed.IndexOf('{');
+        var close = trimmed.LastIndexOf('}');
+        if (open >= 0 && close > open) return trimmed[open..(close + 1)];
+        return trimmed;
+    }
+}
