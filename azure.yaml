@@ -12,8 +12,7 @@ services:
     language: ts
     host: staticwebapp
     dist: dist
-hooks:
-  prepackage:
-    web:
-      shell: sh
-      run: npm ci && npm run build
+    hooks:
+      prepackage:
+        shell: sh
+        run: npm ci && npm run build

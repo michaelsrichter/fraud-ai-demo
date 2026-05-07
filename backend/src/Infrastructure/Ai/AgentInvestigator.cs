@@ -20,7 +20,7 @@ namespace FraudDemo.Infrastructure.Ai;
 
 /// <summary>
 /// Stateless ChatClientAgent per request (research §R6) backed by Microsoft Foundry
-/// (Azure OpenAI, Constitution III). Builds the 5-section prompt payload contract.
+/// (AI Services, Constitution III). Builds the 5-section prompt payload contract.
 /// </summary>
 public sealed class AgentInvestigator : IAiInvestigator
 {
@@ -60,11 +60,12 @@ public sealed class AgentInvestigator : IAiInvestigator
         _logger = logger;
     }
 
-    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, CancellationToken cancellationToken)
+    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(caseUnderReview);
         var requestedUtc = DateTimeOffset.UtcNow;
+        var deploymentName = string.IsNullOrWhiteSpace(modelDeploymentName) ? _foundry.ModelDeploymentName : modelDeploymentName;
 
         if (string.IsNullOrWhiteSpace(_foundry.Endpoint))
         {
@@ -79,7 +80,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         try
         {
             var azureClient = new AzureOpenAIClient(new Uri(_foundry.Endpoint), _credential);
-            ChatClient chat = azureClient.GetChatClient(_foundry.ModelDeploymentName);
+            ChatClient chat = azureClient.GetChatClient(deploymentName);
             IChatClient chatClient = chat.AsIChatClient();
             var agent = new ChatClientAgent(chatClient, instructions: SystemPrompt);
 

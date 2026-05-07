@@ -21,7 +21,7 @@ export function CaseDetailRoute() {
   });
 
   const investigateMutation = useMutation({
-    mutationFn: () => investigateCase(runId!, caseId!),
+    mutationFn: (modelDeploymentName: string) => investigateCase(runId!, caseId!, modelDeploymentName),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["case", runId, caseId] });
       qc.invalidateQueries({ queryKey: ["run", runId] });
@@ -113,7 +113,7 @@ export function CaseDetailRoute() {
         <AiVerdictPanel
           investigation={c.investigation ?? null}
           isLoading={investigateMutation.isPending}
-          onInvestigate={() => investigateMutation.mutate()}
+          onInvestigate={(model) => investigateMutation.mutate(model)}
         />
         {investigateMutation.error && (
           <p className="error">{(investigateMutation.error as Error).message}</p>

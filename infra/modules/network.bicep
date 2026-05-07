@@ -61,8 +61,8 @@ resource privateDnsZoneQueue 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   tags: tags
 }
 
-resource privateDnsZoneOpenAI 'Microsoft.Network/privateDnsZones@2024-06-01' = {
-  name: 'privatelink.openai.azure.com'
+resource privateDnsZoneCogServices 'Microsoft.Network/privateDnsZones@2024-06-01' = {
+  name: 'privatelink.cognitiveservices.azure.com'
   location: 'global'
   tags: tags
 }
@@ -97,9 +97,9 @@ resource queueDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
   }
 }
 
-resource openaiDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
-  parent: privateDnsZoneOpenAI
-  name: '${namePrefix}oai-link'
+resource cogServicesDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: privateDnsZoneCogServices
+  name: '${namePrefix}cog-link'
   location: 'global'
   properties: {
     virtualNetwork: { id: vnet.id }
@@ -113,4 +113,4 @@ output privateEndpointSubnetId string = vnet.properties.subnets[1].id
 output privateDnsZoneBlobId string = privateDnsZoneBlob.id
 output privateDnsZoneTableId string = privateDnsZoneTable.id
 output privateDnsZoneQueueId string = privateDnsZoneQueue.id
-output privateDnsZoneOpenAIId string = privateDnsZoneOpenAI.id
+output privateDnsZoneCogServicesId string = privateDnsZoneCogServices.id

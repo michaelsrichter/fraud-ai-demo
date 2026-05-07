@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FraudDemo.Application.Services;
 
-public sealed record InvestigateCaseRequest(Guid RunId, Guid CaseId);
+public sealed record InvestigateCaseRequest(Guid RunId, Guid CaseId, string? ModelDeploymentName = null);
 
 public sealed class InvestigateCaseHandler
 {
@@ -60,7 +60,7 @@ public sealed class InvestigateCaseHandler
         run.Investigations.TryGetValue(expense.RecordId, out var existing);
         var caseUnderReview = new Case(expense, employee, detection, existing);
 
-        var investigation = await _investigator.InvestigateAsync(run, caseUnderReview, cancellationToken);
+        var investigation = await _investigator.InvestigateAsync(run, caseUnderReview, request.ModelDeploymentName, cancellationToken);
 
         if (investigation.Status == Domain.Enums.InvestigationStatus.Unavailable)
         {

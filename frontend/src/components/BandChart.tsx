@@ -36,9 +36,10 @@ export function BandChart({ counts }: Props) {
               color: "var(--text)",
             }}
             labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-            formatter={(value: number, _name: string, props: { payload: { band: string } }) => {
+            formatter={(value: number, _name: string, props: any) => {
+              const band = props?.payload?.band ?? _name;
               const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0";
-              return [`${value} records (${pct}%)`, props.payload.band];
+              return [`${value} records (${pct}%)`, band];
             }}
           />
           <Bar dataKey="value">

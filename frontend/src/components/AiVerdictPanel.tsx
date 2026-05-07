@@ -1,24 +1,37 @@
+import { useState } from "react";
 import type { AiInvestigationResult } from "../api/runsClient";
+import { AVAILABLE_MODELS } from "../api/runsClient";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
   isLoading: boolean;
-  onInvestigate: () => void;
+  onInvestigate: (modelDeploymentName: string) => void;
 }
 
 export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Props) {
+  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0]);
+
   return (
     <div className="panel">
       <h2>AI Investigation</h2>
       <p className="help">
-        Send this case to the AI agent (GPT-4.1 via Microsoft Foundry) for a structured fraud assessment.
+        Send this case to the AI agent via Microsoft Foundry for a structured fraud assessment.
         The AI receives the expense details, employee profile, 90-day history, and peer comparison — but
         never the ground-truth labels. It returns a verdict, rationale, key signals, and recommended action.
       </p>
+      <div className="field" style={{ marginBottom: 8 }}>
+        <label>Model</label>
+        <span className="help">Choose which Foundry model to use for the investigation.</span>
+        <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
+          {AVAILABLE_MODELS.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
       {!investigation && !isLoading && (
         <div>
           <p className="muted">No AI investigation has been run for this case yet.</p>
-          <button onClick={onInvestigate}>Investigate with AI</button>
+          <button onClick={() => onInvestigate(selectedModel)}>Investigate with AI</button>
           <p className="help" style={{ marginTop: 8 }}>Typically completes in 5–15 seconds. Timeout at 30 s.</p>
         </div>
       )}
@@ -33,7 +46,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Prop
             The AI service was unreachable or timed out. The demo continues to work without it — this
             is the graceful degradation behavior. Check that Foundry__Endpoint is configured.
           </p>
-          <button className="secondary" onClick={onInvestigate}>Retry</button>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel)}>Retry</button>
         </div>
       )}
       {investigation?.status === "Succeeded" && (
@@ -72,10 +85,10 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate }: Prop
           <p>
             <strong>Recommended action:</strong> {investigation.recommendedAction}
           </p>
-          <button className="secondary" onClick={onInvestigate}>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel)}>
             Re-investigate
           </button>
-          <span className="help" style={{ marginLeft: 8 }}>Send to AI again for a fresh analysis.</span>
+          <span className="help" style={{ marginLeft: 8 }}>Send to AI again (you can pick a different model).</span>
         </div>
       )}
     </div>

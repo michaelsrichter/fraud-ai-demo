@@ -12,11 +12,10 @@ param location string
 @description('Object ID of the deploying user (granted dev access via RBAC, Constitution IV)')
 param principalId string
 
-@description('Foundry GA model name')
-param gptModelName string = 'gpt-4.1'
-
-@description('Foundry GA model version')
-param gptModelVersion string
+@description('Model deployments for the Foundry project — array of {name, modelName, modelVersion, capacity}')
+param modelDeployments array = [
+  { name: 'gpt-4.1', modelName: 'gpt-4.1', modelVersion: '2025-04-14', capacity: 100 }
+]
 
 var resourceToken = uniqueString(subscription().id, environmentName, location)
 var namePrefix = take(toLower(replace('${environmentName}${resourceToken}', '-', '')), 17)
@@ -56,7 +55,7 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-// --- Foundry / Azure OpenAI with private endpoint ---
+// --- Microsoft Foundry (AI Services + model deployments) with private endpoint ---
 module foundry 'modules/foundry.bicep' = {
   name: 'foundry'
   scope: rg
@@ -64,10 +63,9 @@ module foundry 'modules/foundry.bicep' = {
     namePrefix: namePrefix
     location: location
     tags: tags
-    modelName: gptModelName
-    modelVersion: gptModelVersion
+    modelDeployments: modelDeployments
     privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
-    privateDnsZoneOpenAIId: network.outputs.privateDnsZoneOpenAIId
+    privateDnsZoneOpenAIId: network.outputs.privateDnsZoneCogServicesId
   }
 }
 
@@ -83,7 +81,7 @@ module functions 'modules/functions.bicep' = {
     storageBlobEndpoint: storage.outputs.blobEndpoint
     storageTableEndpoint: storage.outputs.tableEndpoint
     foundryEndpoint: foundry.outputs.endpoint
-    foundryDeploymentName: foundry.outputs.deploymentName
+    foundryDeploymentName: foundry.outputs.deploymentNames[0]
     functionsSubnetId: network.outputs.functionsSubnetId
   }
 }
@@ -106,7 +104,7 @@ module rbac 'modules/rbac.bicep' = {
   scope: rg
   params: {
     storageAccountName: storage.outputs.storageAccountName
-    foundryAccountName: foundry.outputs.foundryAccountName
+    foundryAccountName: foundry.outputs.aiServicesAccountName
     functionsPrincipalId: functions.outputs.principalId
     userPrincipalId: principalId
   }
@@ -120,4 +118,5 @@ output STORAGE_ACCOUNT_NAME string = storage.outputs.storageAccountName
 output STORAGE_BLOB_ENDPOINT string = storage.outputs.blobEndpoint
 output STORAGE_TABLE_ENDPOINT string = storage.outputs.tableEndpoint
 output FOUNDRY_ENDPOINT string = foundry.outputs.endpoint
-output FOUNDRY_MODEL_DEPLOYMENT_NAME string = foundry.outputs.deploymentName
+output FOUNDRY_MODEL_DEPLOYMENT_NAME string = foundry.outputs.deploymentNames[0]
+output FOUNDRY_DEPLOYMENT_NAMES array = foundry.outputs.deploymentNames

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using FraudDemo.Application.Services;
 using FraudDemo.Functions.ErrorHandling;
 using Microsoft.Azure.Functions.Worker;
@@ -22,7 +23,18 @@ public sealed class InvestigateCaseFunction
         Guid caseId,
         CancellationToken cancellationToken)
     {
-        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId), cancellationToken);
+        string? modelDeploymentName = null;
+        try
+        {
+            var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body, cancellationToken: cancellationToken);
+            if (body.TryGetProperty("modelDeploymentName", out var modelProp) && modelProp.ValueKind == JsonValueKind.String)
+            {
+                modelDeploymentName = modelProp.GetString();
+            }
+        }
+        catch { /* empty body is fine — use default model */ }
+
+        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId, modelDeploymentName), cancellationToken);
         if (result.RunNotFound)
         {
             return await req.NotFoundAsync("Run not found", $"No run with id {runId:D}.", cancellationToken);

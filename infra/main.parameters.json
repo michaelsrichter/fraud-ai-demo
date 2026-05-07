@@ -11,11 +11,12 @@
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
     },
-    "gptModelName": {
-      "value": "${GPT_MODEL_NAME=gpt-4.1}"
-    },
-    "gptModelVersion": {
-      "value": "${GPT_MODEL_VERSION=2025-04-14}"
+    "modelDeployments": {
+      "value": [
+        { "name": "gpt-4.1", "modelName": "gpt-4.1", "modelVersion": "2025-04-14", "capacity": 100 },
+        { "name": "o3", "modelName": "o3", "modelVersion": "2025-04-16", "capacity": 100 },
+        { "name": "o4-mini", "modelName": "o4-mini", "modelVersion": "2025-04-16", "capacity": 100 }
+      ]
     }
   }
 }

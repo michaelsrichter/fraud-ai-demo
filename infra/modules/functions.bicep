@@ -18,10 +18,10 @@ param storageBlobEndpoint string
 @description('Storage table endpoint for Run index')
 param storageTableEndpoint string
 
-@description('Foundry / Azure OpenAI endpoint')
+@description('Microsoft Foundry AI Services endpoint')
 param foundryEndpoint string
 
-@description('Foundry deployment name')
+@description('Default Foundry deployment name')
 param foundryDeploymentName string
 
 @description('Subnet resource ID for Functions VNet integration')

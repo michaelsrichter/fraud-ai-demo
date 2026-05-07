@@ -2,16 +2,16 @@
 
 A synthetic, presenter-friendly demo that contrasts deterministic ML.NET
 anomaly detection with an AI agent investigator backed by Microsoft Foundry
-(Azure OpenAI). Generate an expense dataset, dial fraud intensity and
+(AI Services). Generate an expense dataset, dial fraud intensity and
 per-pattern weights up or down, see records bucket into High / Medium / Low
 confidence bands, then drill into any case and ask the AI for a structured
-verdict with rationale.
+verdict with rationale — choosing from multiple deployed models.
 
 ## Stack
 
 - **Backend**: .NET 8 isolated Azure Functions (Linux Flex Consumption),
   ML.NET RandomizedPca anomaly detection, `Microsoft.Agents.AI` 1.0.0 GA
-  ChatClientAgent over Azure OpenAI.
+  ChatClientAgent over Microsoft Foundry AI Services (multiple models).
 - **Frontend**: React 18 + Vite + TypeScript + TanStack Query + recharts +
   zod.
 - **Storage**: Azure Storage (gzip JSON blobs in `runs/` + `RunIndex` table).

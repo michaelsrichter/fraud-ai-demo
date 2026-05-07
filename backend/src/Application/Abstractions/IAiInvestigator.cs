@@ -5,5 +5,5 @@ namespace FraudDemo.Application.Abstractions;
 
 public interface IAiInvestigator
 {
-    Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, CancellationToken cancellationToken);
+    Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, CancellationToken cancellationToken);
 }

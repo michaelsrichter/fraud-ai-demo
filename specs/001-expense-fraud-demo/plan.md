@@ -50,7 +50,7 @@ in Bicep; CI/CD is GitHub Actions with OIDC federated identity, deploying via
 **Target Platform**:
 - Backend: Azure Functions Flex Consumption plan (Linux, .NET 9 isolated)
 - Frontend: Azure Static Web Apps (Standard tier for managed-identity-backed APIs; or Free tier if linked to Functions via SWA-linked-API binding)
-- AI: Microsoft Foundry resource (Azure OpenAI sub-resource type) with the latest GA GPT model deployed (target: `gpt-4.1` or successor available at deploy time; the exact model name is configurable per FR-020 / Principle IX)
+- AI: Microsoft Foundry AI Services resource (kind: AIServices — NOT Azure OpenAI) with multiple GA GPT models deployed (gpt-4.1, o3, o4-mini); users select the model at investigation time per FR-020 / Principle IX
 
 **Project Type**: Web application (frontend + backend) with infrastructure-as-code
 
@@ -84,8 +84,8 @@ Each row is evaluated against the project [Constitution v1.0.0](../../.specify/m
 |---|---|---|---|
 | I | Platform & Deployment (Azure, Bicep, static frontend, Functions isolated) | **PASS** | Frontend = Azure Static Web Apps; backend = Azure Functions .NET 9 isolated worker; all infra in `infra/*.bicep`. No portal/imperative provisioning. |
 | II | Source Control & CI/CD (GitHub, Actions, OIDC, no secrets, automated on `main`) | **PASS** | GitHub Actions workflow on push to `main` builds backend + frontend, runs all tests, then runs `azd deploy`. Auth = OIDC federated identity to a deploy-time service principal; no PATs/keys. |
-| III | AI & Agent Framework (Foundry + GA Agent Framework) | **PASS** | AI calls go through `Microsoft.Agents.AI` (GA) targeting a Microsoft Foundry / Azure OpenAI deployment of the latest GA GPT model. No preview SDKs on `main`. |
-| IV | Security & Identity (Managed Identity, no secrets, RBAC in Bicep, CLI user granted dev access) | **PASS** | Functions app = system-assigned Managed Identity. RBAC role assignments (`Storage Blob Data Contributor`, `Storage Table Data Contributor`, `Cognitive Services OpenAI User`) all created in Bicep. Bicep also assigns the same roles to the deploying user (`az ad signed-in-user`) so local dev works without portal clicks. No connection strings; SDKs use `DefaultAzureCredential`. |
+| III | AI & Agent Framework (Foundry + GA Agent Framework) | **PASS** | AI calls go through `Microsoft.Agents.AI` (GA) targeting a Microsoft Foundry AI Services deployment with multiple models. **No Azure OpenAI resources (kind: OpenAI)**. No preview SDKs on `main`. |
+| IV | Security & Identity (Managed Identity, no secrets, RBAC in Bicep, CLI user granted dev access) | **PASS** | Functions app = system-assigned Managed Identity. RBAC role assignments (`Storage Blob Data Contributor`, `Storage Table Data Contributor`, `Cognitive Services User`) all created in Bicep. Bicep also assigns the same roles to the deploying user (`az ad signed-in-user`) so local dev works without portal clicks. No connection strings; SDKs use `DefaultAzureCredential`. |
 | V | Code Quality & Architecture (SOLID, layered, DI, modular) | **PASS** | Backend organized into `Domain/`, `Application/`, `Infrastructure/`, `Functions/` projects. DI is the Functions isolated-worker default; all I/O is behind interfaces. |
 | VI | Testing Requirements (unit tests for all backend logic, mocked AI boundary, runnable locally + in CI) | **PASS** | `tests/unit/` xUnit project with coverage for domain (scoring, banding, fraud injection), application (orchestration, agent boundary mocked via `IAiInvestigator`), infrastructure (storage repository wrapped by integration-style tests using Azurite). |
 | VII | Documentation (`/docs`, Markdown, architecture + setup + components + APIs, inline comments) | **PASS w/ note** | `/docs` will contain `architecture.md`, `setup.md`, `deployment.md`, `components.md`, plus the OpenAPI doc generated from `contracts/`. Inline comments mandatory on non-obvious logic (esp. scoring math, agent prompt construction). |

@@ -68,8 +68,8 @@ export function RunsRoute() {
             bands. Higher intensity → more records in the High band.</li>
             <li><strong>Drill into cases</strong> — Click any row to see the expense details, the employee profile,
             and which features (amount z-score, vendor rarity, weekend submission, etc.) drove the anomaly score.</li>
-            <li><strong>AI investigation</strong> — From any case, click "Investigate with AI" to send it to
-            a GPT-4.1 agent for a structured verdict with rationale and recommended action.</li>
+            <li><strong>AI investigation</strong> — From any case, click "Investigate with AI" and choose a model
+            (gpt-4.1, o3, or o4-mini) from the dropdown — all deployed in Microsoft Foundry.</li>
           </ol>
           <p className="muted">
             Try the <strong>Low</strong> preset first, then switch to <strong>High — Vendor</strong> and compare how

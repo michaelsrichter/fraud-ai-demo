@@ -162,13 +162,15 @@ export async function getCase(runId: string, caseId: string): Promise<Case> {
   return jsonRequest(`${API_BASE}/runs/${runId}/cases/${caseId}`, { method: "GET" }, CaseSchema);
 }
 
-export async function investigateCase(runId: string, caseId: string): Promise<AiInvestigationResult> {
+export async function investigateCase(runId: string, caseId: string, modelDeploymentName?: string): Promise<AiInvestigationResult> {
   return jsonRequest(
     `${API_BASE}/runs/${runId}/cases/${caseId}/investigate`,
-    { method: "POST" },
+    { method: "POST", body: JSON.stringify({ modelDeploymentName: modelDeploymentName ?? undefined }) },
     AiInvestigationResultSchema,
   );
 }
+
+export const AVAILABLE_MODELS = ["gpt-4.1", "o3", "o4-mini"] as const;
 
 export async function deleteRun(runId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/runs/${runId}`, { method: "DELETE" });

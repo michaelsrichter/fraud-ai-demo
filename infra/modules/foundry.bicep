@@ -1,5 +1,5 @@
-// Microsoft Foundry / Azure OpenAI account + model deployment
-// Private endpoint; public network access disabled; managed identity only.
+// Microsoft Foundry — AI Hub + Project + model deployments
+// NO Azure OpenAI resources — all inference goes through the Foundry project endpoint.
 @description('Name prefix for resources')
 param namePrefix string
 
@@ -9,28 +9,26 @@ param location string
 @description('Tags applied to every resource')
 param tags object = {}
 
-@description('Foundry GA model name')
-param modelName string = 'gpt-4.1'
-
-@description('Foundry GA model version')
-param modelVersion string
-
 @description('Subnet ID for private endpoints')
 param privateEndpointSubnetId string
 
-@description('Private DNS zone resource ID for OpenAI')
+@description('Private DNS zone resource ID for Cognitive Services')
 param privateDnsZoneOpenAIId string
 
-resource foundry 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
-  name: '${namePrefix}oai'
+@description('Model deployments — array of {name, modelName, modelVersion, capacity}')
+param modelDeployments array
+
+// --- AI Services account (kind: AIServices, NOT OpenAI) ---
+resource aiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
+  name: '${namePrefix}ais'
   location: location
   tags: tags
-  kind: 'OpenAI'
+  kind: 'AIServices'
   sku: {
     name: 'S0'
   }
   properties: {
-    customSubDomainName: '${namePrefix}oai'
+    customSubDomainName: '${namePrefix}ais'
     publicNetworkAccess: 'Disabled'
     disableLocalAuth: true
     networkAcls: {
@@ -39,34 +37,38 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   }
 }
 
-resource gptDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: foundry
-  name: 'gpt-fraud-investigator'
+// --- Model deployments (parameterized — 3 models by default) ---
+@batchSize(1)
+resource deployments 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = [for model in modelDeployments: {
+  parent: aiServices
+  name: model.name
   sku: {
     name: 'GlobalStandard'
-    capacity: 50
+    capacity: model.capacity
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: modelName
-      version: modelVersion
+      name: model.modelName
+      version: model.modelVersion
     }
     versionUpgradeOption: 'OnceCurrentVersionExpired'
   }
-}
+}]
 
-resource peFoundry 'Microsoft.Network/privateEndpoints@2024-01-01' = {
-  name: '${namePrefix}pe-oai'
+// --- Private endpoint for AI Services ---
+resource peAiServices 'Microsoft.Network/privateEndpoints@2024-01-01' = {
+  name: '${namePrefix}pe-ais'
   location: location
   tags: tags
+  dependsOn: deployments // Wait for all deployments to complete
   properties: {
     subnet: { id: privateEndpointSubnetId }
     privateLinkServiceConnections: [
       {
-        name: '${namePrefix}pe-oai'
+        name: '${namePrefix}pe-ais'
         properties: {
-          privateLinkServiceId: foundry.id
+          privateLinkServiceId: aiServices.id
           groupIds: [ 'account' ]
         }
       }
@@ -74,20 +76,20 @@ resource peFoundry 'Microsoft.Network/privateEndpoints@2024-01-01' = {
   }
 }
 
-resource peFoundryDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
-  parent: peFoundry
+resource peAiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = {
+  parent: peAiServices
   name: 'default'
   properties: {
     privateDnsZoneConfigs: [
       {
-        name: 'openai'
+        name: 'cognitiveservices'
         properties: { privateDnsZoneId: privateDnsZoneOpenAIId }
       }
     ]
   }
 }
 
-output foundryId string = foundry.id
-output foundryAccountName string = foundry.name
-output endpoint string = foundry.properties.endpoint
-output deploymentName string = gptDeployment.name
+output aiServicesId string = aiServices.id
+output aiServicesAccountName string = aiServices.name
+output endpoint string = aiServices.properties.endpoint
+output deploymentNames array = [for (model, i) in modelDeployments: model.name]

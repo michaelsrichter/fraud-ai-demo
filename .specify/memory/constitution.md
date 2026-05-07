@@ -66,16 +66,20 @@ from commit to running system, with no shadow secrets.
 
 ### III. AI & Agent Framework
 
-AI capabilities MUST use Microsoft Foundry with the latest available GPT
-models. AI orchestration MUST use the GA (generally available) version of the
-Microsoft Agent Framework — preview or experimental versions are NOT permitted
-on `main`. The AI component MUST function as an agent responsible for:
-evaluating ambiguous fraud cases; producing structured outputs (machine-
-parseable schema); and providing human-readable reasoning alongside those
-outputs.
+AI capabilities MUST use Microsoft Foundry (AI Services + Foundry Project) —
+**Azure OpenAI resources (kind: OpenAI) are NOT permitted**. All model
+deployments MUST be provisioned under an AI Services account (kind: AIServices)
+via Bicep. Multiple models MUST be deployed to allow user-selectable model
+choice at investigation time. AI orchestration MUST use the GA (generally
+available) version of the Microsoft Agent Framework — preview or experimental
+versions are NOT permitted on `main`. The AI component MUST function as an
+agent responsible for: evaluating ambiguous fraud cases; producing structured
+outputs (machine-parseable schema); and providing human-readable reasoning
+alongside those outputs.
 
 **Rationale**: Pinning to GA Foundry + Agent Framework guarantees a stable,
-demonstrable AI surface and avoids breaking changes between demo runs.
+demonstrable AI surface and avoids breaking changes between demo runs. Using
+AI Services (not Azure OpenAI) provides access to the full model catalog.
 
 ### IV. Security & Identity
 
