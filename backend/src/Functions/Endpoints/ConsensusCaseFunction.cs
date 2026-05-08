@@ -121,6 +121,16 @@ public sealed class ConsensusCaseFunction
             keySignals = result.KeySignals,
             recommendedAction = result.RecommendedAction,
             unavailableReason = result.UnavailableReason,
+            toolTrace = result.ToolTrace?.Select(t => new
+            {
+                toolName = t.ToolName,
+                parameters = t.Parameters,
+                responseSummary = t.ResponseSummary,
+                responseData = t.ResponseData,
+                reasoning = t.Reasoning,
+                latencyMs = t.LatencyMs,
+                succeeded = t.Succeeded,
+            }).ToList(),
         }).ToList();
 
         // Run arbiter LLM to reason over the 3 results
@@ -188,7 +198,7 @@ public sealed class ConsensusCaseFunction
         var prompt = JsonSerializer.Serialize(modelResults, JsonOptions);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        cts.CancelAfter(TimeSpan.FromSeconds(60));
 
         var agentResponse = await agent.RunAsync(prompt, cancellationToken: cts.Token);
         var json = agentResponse.Text;

@@ -118,6 +118,61 @@ back to a majority vote across the succeeded models (FR-027).
 Returns the system prompt and user prompt that would be sent to the AI agent
 for this case, without invoking the model. Useful for demo transparency.
 
+## `POST /runs/{runId}/tools/expenses/query` — `queryExpenseData`
+
+Filters and aggregates expense data from a Run for the AI agent's data
+retrieval tool (FR-001–FR-006).
+
+**Request** (`RunDataQuery`):
+
+```json
+{
+  "employeeId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "vendor": "AcmeAir",
+  "category": "Travel",
+  "band": "High",
+  "dateRangeStart": "2026-01-01T00:00:00Z",
+  "dateRangeEnd": "2026-03-31T23:59:59Z",
+  "minAmount": 100.00,
+  "maxAmount": 1000.00,
+  "limit": 100,
+  "detail": false
+}
+```
+
+All fields are optional. Filters combine with AND logic.
+
+**Response — compact mode** (`detail=false`, default):
+
+```json
+{
+  "metadata": { "totalMatches": 47, "returnedCount": 10, "truncated": true, "mode": "compact" },
+  "aggregates": {
+    "meanAmount": 542.30,
+    "medianAmount": 423.15,
+    "minAmount": 12.50,
+    "maxAmount": 2150.00,
+    "distinctVendors": 8,
+    "distinctCategories": 4,
+    "distinctEmployees": 12
+  },
+  "topRecords": [ { "recordId": "...", "employeeName": "...", "amount": 950.00, "vendor": "...", "confidence": 0.92, "band": "High", "topFeatures": [...] } ]
+}
+```
+
+**Response — detail mode** (`detail=true`):
+
+```json
+{
+  "metadata": { "totalMatches": 47, "returnedCount": 47, "truncated": false, "mode": "detail" },
+  "records": [ { "recordId": "...", "employeeName": "...", "amount": 950.00, ... } ]
+}
+```
+
+`limit` is clamped to `[1, 500]`. Ground-truth labels (`isInjectedFraud`,
+`injectedPattern`) are never included in the response (FR-005).
+`404` if the run is not found.
+
 **Response**: `200 OK`
 
 ```json

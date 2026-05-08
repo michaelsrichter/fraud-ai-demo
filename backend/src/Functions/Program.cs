@@ -41,6 +41,7 @@ var host = new HostBuilder()
         services.AddSingleton<IRunRepository, BlobRunRepository>();
         services.AddSingleton<IAiInvestigator, AgentInvestigator>();
         services.AddSingleton<IRunDataQueryService, RunDataQueryService>();
+        services.AddSingleton<IFoundryToolboxClient, FoundryToolboxClient>();
 
         services.AddSingleton<SimulationConfigurationMapper>();
         services.AddSingleton<GenerateRunHandler>();

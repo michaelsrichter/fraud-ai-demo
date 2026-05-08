@@ -13,6 +13,7 @@
                                  │  • InvestigateCaseFunction│
                                  │  • ConsensusCaseFunction │
                                  │  • PreviewPromptFunction │
+                                 │  • ExpenseDataQueryFn    │
                                  │  • DeleteRunFunction     │
                                  └──────┬───────────┬───────┘
                                         │ MI         │ MI
@@ -24,6 +25,8 @@
                               │  RunIndex   │  │  gpt-5.4         │
                               └─────────────┘  │  gpt-5.3-chat    │
                                                │  gpt-5.4-mini    │
+                                               │  Toolbox (MCP)   │
+                                               │   └ Code Interp. │
                                                └──────────────────┘
 ```
 
@@ -48,6 +51,24 @@
    one retry on 412). On any failure, returns `Status: Unavailable` and does
    **not** persist. System prompts instruct models to be bold and decisive
    (FR-028) — favoring "Likely" or "Unlikely" over "Inconclusive."
+
+   **Tool-calling flow:** During investigation, the agent has access to two
+   tools registered via `ChatOptions.Tools`:
+   - `query_expense_data` — in-process data retrieval tool that queries the
+     Run blob via `RunDataQueryService`. Supports filtering by employee, vendor,
+     category, band, date range, amount range. Returns compact summaries
+     (aggregates + top-10) or full detail records. The Run is loaded once and
+     captured in closure — no repeated blob reads.
+   - `code_interpreter` — Foundry Code Interpreter via MCP Toolbox. Connected
+     using the C# `ModelContextProtocol` SDK to the consumer endpoint
+     (`{project}/toolboxes/fraud-ai-tools/mcp`). Auth via bearer token with
+     `DefaultAzureCredential`. Required header: `Foundry-Features: Toolboxes=V1Preview`.
+     If the toolbox is unavailable, the agent proceeds with data retrieval only
+     (graceful degradation).
+
+   All tool invocations are captured in a `ToolTrace` attached to the
+   `AiInvestigationResult`. The frontend renders these in a collapsible
+   "Agent Reasoning Trace" panel. Max 10 tool calls per investigation.
 4. **Consensus investigation.** Browser POSTs `/api/runs/{id}/cases/{caseId}/consensus`.
    `ConsensusCaseFunction` runs all 3 deployed models (GPT-5.4, GPT-5.3 Chat,
    GPT-5.4 Mini) in **parallel** via `Task.WhenAll`, collecting individual

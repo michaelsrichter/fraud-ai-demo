@@ -18,6 +18,12 @@ param privateDnsZoneOpenAIId string
 @description('Model deployments — array of {name, modelName, modelVersion, capacity}')
 param modelDeployments array
 
+@description('Foundry Toolbox name for Code Interpreter')
+param toolboxName string = 'fraud-ai-tools'
+
+@description('Foundry Project name (already provisioned in the same RG)')
+param foundryProjectName string = 'fraud-demo'
+
 // --- AI Services account (kind: AIServices, NOT OpenAI) ---
 resource aiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: '${namePrefix}ais'
@@ -93,3 +99,11 @@ output aiServicesId string = aiServices.id
 output aiServicesAccountName string = aiServices.name
 output endpoint string = aiServices.properties.endpoint
 output deploymentNames array = [for (model, i) in modelDeployments: model.name]
+
+// --- Foundry Project + Toolbox ---
+// The Foundry Hub, Project, and Toolbox (fraud-ai-tools with Code Interpreter)
+// are already provisioned in the same resource group. The project endpoint is
+// derived from the AI Services account name + project name.
+// Toolbox is managed via the Foundry portal (cannot be provisioned in Bicep).
+output projectEndpoint string = 'https://${aiServices.name}.services.ai.azure.com/api/projects/${foundryProjectName}'
+output toolboxName string = toolboxName

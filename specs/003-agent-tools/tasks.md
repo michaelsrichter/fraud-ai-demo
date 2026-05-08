@@ -66,9 +66,9 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 ### Backend tests for US1
 
-- [ ] T014 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` — given a fixture Run with 100 expenses, verify: (a) filter by vendor returns only matching records; (b) filter by employeeId returns correct subset; (c) filter by band returns correct band; (d) filter by date range works; (e) filter by amount range works; (f) compact mode returns aggregates + top-10 by score; (g) detail mode returns full records up to limit; (h) limit=500 max enforced; (i) empty filter matches all records; (j) `IsInjectedFraud` and `InjectedPattern` NEVER appear in output (FR-005)
-- [ ] T015 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify compact mode aggregates: mean, median, min, max amounts are correct; distinct vendor/category/employee counts are correct
-- [ ] T016 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify empty result set returns zero-count metadata and null aggregates/records gracefully
+- [X] T014 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` — given a fixture Run with 100 expenses, verify: (a) filter by vendor returns only matching records; (b) filter by employeeId returns correct subset; (c) filter by band returns correct band; (d) filter by date range works; (e) filter by amount range works; (f) compact mode returns aggregates + top-10 by score; (g) detail mode returns full records up to limit; (h) limit=500 max enforced; (i) empty filter matches all records; (j) `IsInjectedFraud` and `InjectedPattern` NEVER appear in output (FR-005)
+- [X] T015 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify compact mode aggregates: mean, median, min, max amounts are correct; distinct vendor/category/employee counts are correct
+- [X] T016 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify empty result set returns zero-count metadata and null aggregates/records gracefully
 
 ### Backend implementation for US1
 
@@ -81,7 +81,7 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 - [X] T020 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — create a private method `CreateDataRetrievalTool(Run run)` that returns an `AIFunction` wrapping `RunDataQueryService.Query()` with the Run captured in closure; the function accepts filter parameters as a JSON string, parses to `RunDataQuery`, calls the service, serializes the result, and includes a call counter enforcing `MaxToolCalls` (FR-013)
 - [X] T021 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) create the data retrieval tool via `CreateDataRetrievalTool(run)`, (b) pass it in `ChatOptions.Tools`, (c) set `ChatOptions.ToolMode = ChatToolMode.Auto`, (d) extend timeout to 60s when tools are present (FR-021)
 - [X] T022 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — after `agent.RunAsync()`, iterate `response.Messages` to build `IReadOnlyList<ToolInvocation>` capturing each tool call (name, parameters, response summary, latency, success), plus any intermediate assistant reasoning messages (FR-017); pass to `AiInvestigationResult.Succeeded()`; add `ILogger` structured logging for each tool invocation: tool name, parameters summary, latency, success/failure (FR-012)
-- [ ] T023 [P] [US1] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` — verify `CreateDataRetrievalTool` returns correctly filtered results when called with test parameters; verify it strips ground-truth labels; verify call counter returns "max reached" message after configured limit
+- [X] T023 [P] [US1] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` — verify `CreateDataRetrievalTool` returns correctly filtered results when called with test parameters; verify it strips ground-truth labels; verify call counter returns "max reached" message after configured limit
 
 **Checkpoint US1**: Data retrieval tool works in-process. Agent can query run data and tool trace is captured.
 
@@ -112,11 +112,11 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 ### Backend implementation for US2
 
-- [ ] T028 [US2] Implement `backend/src/Infrastructure/Ai/FoundryToolboxClient.cs` (`IFoundryToolboxClient`) — connects to the Foundry Toolbox MCP endpoint using `ModelContextProtocol` SDK; auth via `DefaultAzureCredential` with scope `https://ai.azure.com/.default` using a custom `DelegatingHandler` (bearer token injection); `GetToolsAsync()` returns MCP tools as `AITool[]`; `CloseAsync()` disconnects; graceful degradation: returns null on connection failure (FR-009) with warning log
-- [ ] T029 [US2] Wire `IFoundryToolboxClient` → `FoundryToolboxClient` in `backend/src/Functions/Program.cs` DI as a singleton (connection reuse across investigations)
-- [ ] T030 [US2] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) call `IFoundryToolboxClient.GetToolsAsync()` to get MCP tools, (b) add them to `ChatOptions.Tools` alongside the data retrieval tool, (c) if toolbox returns null, proceed with data retrieval only and log warning
-- [ ] T031 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/FoundryToolboxClientTests.cs` — mock the MCP SDK to verify: (a) correct toolbox URL construction from config, (b) bearer token injection with correct scope, (c) graceful null return on connection failure, (d) tools are returned on success
-- [ ] T032 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` (extend) — verify that when toolbox returns null, agent still has data retrieval tool and investigation succeeds; verify that when toolbox returns tools, they appear in ChatOptions.Tools
+- [X] T028 [US2] Implement `backend/src/Infrastructure/Ai/FoundryToolboxClient.cs` (`IFoundryToolboxClient`) — connects to the Foundry Toolbox MCP endpoint using `ModelContextProtocol` SDK; auth via `DefaultAzureCredential` with scope `https://ai.azure.com/.default` using a custom `DelegatingHandler` (bearer token injection); `GetToolsAsync()` returns MCP tools as `AITool[]`; `CloseAsync()` disconnects; graceful degradation: returns null on connection failure (FR-009) with warning log
+- [X] T029 [US2] Wire `IFoundryToolboxClient` → `FoundryToolboxClient` in `backend/src/Functions/Program.cs` DI as a singleton (connection reuse across investigations)
+- [X] T030 [US2] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) call `IFoundryToolboxClient.GetToolsAsync()` to get MCP tools, (b) add them to `ChatOptions.Tools` alongside the data retrieval tool, (c) if toolbox returns null, proceed with data retrieval only and log warning
+- [X] T031 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/FoundryToolboxClientTests.cs` — mock the MCP SDK to verify: (a) correct toolbox URL construction from config, (b) bearer token injection with correct scope, (c) graceful null return on connection failure, (d) tools are returned on success
+- [X] T032 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` (extend) — verify that when toolbox returns null, agent still has data retrieval tool and investigation succeeds; verify that when toolbox returns tools, they appear in ChatOptions.Tools
 
 **Checkpoint US2**: Code Interpreter available via MCP. Graceful degradation if unavailable.
 
@@ -153,10 +153,10 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 **Purpose**: Provision the Foundry infrastructure for the Code Interpreter toolbox.
 
-- [ ] T039 Modify `infra/modules/foundry.bicep` — add Foundry AI Hub (`Microsoft.MachineLearningServices/workspaces` kind `Hub`) linked to the existing AI Services account; add Foundry Project linked to the Hub; output `projectEndpoint`
-- [ ] T040 [P] Document toolbox creation steps in `docs/setup.md` — if the Foundry Toolbox cannot be provisioned in Bicep (requires portal), document the manual steps: create toolbox named `fraud-ai-tools` with Code Interpreter tool in the Foundry Project
-- [ ] T041 Modify `infra/modules/functions.bicep` — add app settings `Foundry__ProjectEndpoint`, `Foundry__ToolboxName`, `Foundry__ToolboxVersion` wired from foundry module outputs
-- [ ] T042 [P] Modify `infra/modules/rbac.bicep` — if the Foundry Hub/Project requires additional RBAC for the Function App MI or deploying user, add the necessary role assignments
+- [X] T039 Modify `infra/modules/foundry.bicep` — add Foundry AI Hub (`Microsoft.MachineLearningServices/workspaces` kind `Hub`) linked to the existing AI Services account; add Foundry Project linked to the Hub; output `projectEndpoint`
+- [X] T040 [P] Document toolbox creation steps in `docs/setup.md` — if the Foundry Toolbox cannot be provisioned in Bicep (requires portal), document the manual steps: create toolbox named `fraud-ai-tools` with Code Interpreter tool in the Foundry Project
+- [X] T041 Modify `infra/modules/functions.bicep` — add app settings `Foundry__ProjectEndpoint`, `Foundry__ToolboxName`, `Foundry__ToolboxVersion` wired from foundry module outputs
+- [X] T042 [P] Modify `infra/modules/rbac.bicep` — if the Foundry Hub/Project requires additional RBAC for the Function App MI or deploying user, add the necessary role assignments
 
 ---
 
@@ -164,12 +164,12 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 **Purpose**: Documentation, logging, and final verification.
 
-- [ ] T043 [P] Update `docs/api.md` — add documentation for `POST /api/runs/{runId}/tools/expenses/query` endpoint with request/response examples for both compact and detail modes
-- [ ] T044 [P] Update `docs/components.md` — document `RunDataQueryService`, `FoundryToolboxClient`, `ToolTracePanel`, and the updated `AgentInvestigator` tool registration
-- [ ] T045 [P] Update `docs/architecture.md` — add tool-calling flow to the data flow diagram: agent → data retrieval (in-process) → Code Interpreter (MCP → Foundry Toolbox)
-- [ ] T046 [P] Verify `ILogger` structured logging in `AgentInvestigator` covers each tool invocation: tool name, parameters summary, latency, success/failure (FR-012) — logging is implemented in T022 but this task verifies completeness and adds any missing fields
-- [ ] T047 Modify `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` — update timeout to 60s (FR-021); ensure per-model tool traces are included in the consensus response `models[].toolTrace`
-- [ ] T048 Update `backend/src/Functions/Endpoints/PreviewPromptFunction.cs` — ensure the preview shows the updated system prompt with tool descriptions so presenters can see the AVAILABLE TOOLS section
+- [X] T043 [P] Update `docs/api.md` — add documentation for `POST /api/runs/{runId}/tools/expenses/query` endpoint with request/response examples for both compact and detail modes
+- [X] T044 [P] Update `docs/components.md` — document `RunDataQueryService`, `FoundryToolboxClient`, `ToolTracePanel`, and the updated `AgentInvestigator` tool registration
+- [X] T045 [P] Update `docs/architecture.md` — add tool-calling flow to the data flow diagram: agent → data retrieval (in-process) → Code Interpreter (MCP → Foundry Toolbox)
+- [X] T046 [P] Verify `ILogger` structured logging in `AgentInvestigator` covers each tool invocation: tool name, parameters summary, latency, success/failure (FR-012) — logging is implemented in T022 but this task verifies completeness and adds any missing fields
+- [X] T047 Modify `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` — update timeout to 60s (FR-021); ensure per-model tool traces are included in the consensus response `models[].toolTrace`
+- [X] T048 Update `backend/src/Functions/Endpoints/PreviewPromptFunction.cs` — ensure the preview shows the updated system prompt with tool descriptions so presenters can see the AVAILABLE TOOLS section
 
 **Checkpoint**: All tools working, UI displaying traces, docs updated, logging in place.
 

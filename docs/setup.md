@@ -60,3 +60,37 @@ own dedicated panel so you can watch all three logs at once.
 
 Once running, open **http://localhost:5173** (Vite dev server). API calls to
 `/api/*` are proxied to the Functions host on port 7071.
+
+## Foundry Toolbox (Code Interpreter)
+
+The AI agent uses the Foundry Code Interpreter via a
+[Foundry Toolbox](https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/toolbox)
+exposed as an MCP endpoint. The Foundry Hub, Project (`fraud-demo`), and
+Toolbox (`fraud-ai-tools` with Code Interpreter) are already provisioned in the
+same resource group (`rg-fraud-demo`) as the other Azure resources.
+
+- **Project endpoint**: `https://frauddemoshi4qxw6ais.services.ai.azure.com/api/projects/fraud-demo`
+- **Toolbox name**: `fraud-ai-tools`
+- **Toolbox portal**: [Open in Foundry](https://ai.azure.com/nextgen/r/Aq4j21SkQkueo-IZA6khHg,rg-fraud-demo,,frauddemoshi4qxw6ais,fraud-demo/build/toolboxes/fraud-ai-tools)
+
+The consumer MCP endpoint uses the versionless URL pattern
+(`{project}/toolboxes/{name}/mcp?api-version=v1`) which always serves the
+default toolbox version. All requests include the required
+`Foundry-Features: Toolboxes=V1Preview` header.
+
+### Local development with Code Interpreter
+
+The `local.settings.json` already has the correct values:
+
+```json
+{
+  "Foundry__ProjectEndpoint": "https://frauddemoshi4qxw6ais.services.ai.azure.com/api/projects/fraud-demo",
+  "Foundry__ToolboxName": "fraud-ai-tools"
+}
+```
+
+Ensure you are signed in via `az login` — the `DefaultAzureCredential` will
+use your CLI token for Foundry Toolbox auth (scope `https://ai.azure.com/.default`).
+
+If the toolbox is not configured or unavailable, the agent gracefully proceeds
+with the data retrieval tool only.

@@ -82,6 +82,8 @@ module functions 'modules/functions.bicep' = {
     storageTableEndpoint: storage.outputs.tableEndpoint
     foundryEndpoint: foundry.outputs.endpoint
     foundryDeploymentName: foundry.outputs.deploymentNames[0]
+    foundryProjectEndpoint: foundry.outputs.projectEndpoint
+    foundryToolboxName: foundry.outputs.toolboxName
     functionsSubnetId: network.outputs.functionsSubnetId
   }
 }

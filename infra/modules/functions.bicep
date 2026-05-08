@@ -24,6 +24,12 @@ param foundryEndpoint string
 @description('Default Foundry deployment name')
 param foundryDeploymentName string
 
+@description('Foundry Project endpoint for toolbox MCP')
+param foundryProjectEndpoint string = ''
+
+@description('Foundry Toolbox name')
+param foundryToolboxName string = 'fraud-ai-tools'
+
 @description('Subnet resource ID for Functions VNet integration')
 param functionsSubnetId string
 
@@ -133,6 +139,22 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'Foundry__ModelDeploymentName'
           value: foundryDeploymentName
+        }
+        {
+          name: 'Foundry__ProjectEndpoint'
+          value: foundryProjectEndpoint
+        }
+        {
+          name: 'Foundry__ToolboxName'
+          value: foundryToolboxName
+        }
+        {
+          name: 'Agent__MaxToolCalls'
+          value: '10'
+        }
+        {
+          name: 'Agent__ToolTimeoutSeconds'
+          value: '60'
         }
         {
           name: 'Detection__DefaultLowThreshold'

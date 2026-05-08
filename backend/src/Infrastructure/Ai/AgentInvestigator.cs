@@ -247,10 +247,10 @@ public sealed class AgentInvestigator : IAiInvestigator
             }
 
             var chatOptions = new ChatOptions { ToolMode = ChatToolMode.Auto, Tools = new List<AITool>(tools) };
-            if (temperature.HasValue)
-            {
-                chatOptions.Temperature = temperature.Value;
-            }
+            // Note: temperature is intentionally NOT set when tools are present.
+            // The deployed models (e.g. GPT-5.4) reject non-default temperature
+            // values when tool-calling is enabled (HTTP 400: "Only the default (1)
+            // value is supported"). Temperature is only applied for tool-free calls.
 
             // Wrap the chat client with tool-aware options using ChatClientBuilder
             var toolAwareChatClient = new ChatClientBuilder(chatClient)
