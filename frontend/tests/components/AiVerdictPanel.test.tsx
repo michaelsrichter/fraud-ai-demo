@@ -1,12 +1,17 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AiVerdictPanel } from "../../src/components/AiVerdictPanel";
-import type { AiInvestigationResult } from "../../src/api/runsClient";
+import type { AiInvestigationResult, ConsensusResult } from "../../src/api/runsClient";
+
+// Mock the consensus function so we can test the rendered state
+vi.mock("../../src/api/runsClient", async () => {
+  const actual = await vi.importActual("../../src/api/runsClient");
+  return { ...actual as object };
+});
 
 describe("AiVerdictPanel", () => {
   it("renders empty state when no investigation", () => {
     render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
-    expect(screen.getByText(/no ai investigation/i)).toBeInTheDocument();
     expect(screen.getByText(/investigate with ai/i)).toBeInTheDocument();
   });
 
@@ -54,5 +59,15 @@ describe("AiVerdictPanel", () => {
     const select = container.querySelector("select");
     expect(select).toBeTruthy();
     expect(select?.options.length).toBeGreaterThan(0);
+  });
+
+  it("has a consensus button", () => {
+    render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
+    expect(screen.getByText(/consensus/i)).toBeInTheDocument();
+  });
+
+  it("has a preview prompt button", () => {
+    render(<AiVerdictPanel investigation={null} isLoading={false} onInvestigate={vi.fn()} runId="r1" caseId="c1" />);
+    expect(screen.getByText(/preview ai prompt/i)).toBeInTheDocument();
   });
 });

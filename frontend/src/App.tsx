@@ -1,16 +1,21 @@
-import { useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { RunsRoute } from "./routes/RunsRoute";
 import { RunDetailRoute } from "./routes/RunDetailRoute";
 import { CaseDetailRoute } from "./routes/CaseDetailRoute";
-import { HowItWorksRoute } from "./routes/HowItWorksRoute";
 import { HomePage } from "./routes/HomePage";
 import { AdminRoute } from "./routes/AdminRoute";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { TopNav } from "./components/TopNav";
 import { ComingSoonLab } from "./components/ComingSoonLab";
 import { CreateProfileForm } from "./components/CreateProfileForm";
+import { Footer } from "./components/Footer";
 import { getProfile, type UserProfile } from "./lib/userProfile";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 function LabGuard({ children, profile, onProfileCreated }: {
   children: React.ReactNode;
@@ -36,8 +41,8 @@ export function App() {
 
   return (
     <>
+      <ScrollToTop />
       <TopNav profile={profile} />
-      <ThemeToggle />
       <Routes>
         <Route path="/" element={<HomePage />} />
 
@@ -76,12 +81,13 @@ export function App() {
           </LabGuard>
         } />
 
-        {/* Info pages */}
-        <Route path="/how-it-works" element={<HowItWorksRoute />} />
+        {/* Info pages — redirect old how-it-works to expenses lab */}
+        <Route path="/how-it-works" element={<Navigate to="/labs/expenses" replace />} />
 
         {/* Admin */}
         <Route path="/admin" element={<AdminRoute />} />
       </Routes>
+      <Footer />
     </>
   );
 }

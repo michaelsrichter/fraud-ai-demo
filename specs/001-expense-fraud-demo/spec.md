@@ -15,6 +15,14 @@
 - Q: How are datasets persisted across runs — single replaceable dataset, or session history? → A: Keep full session history of runs in a server-side data store (Azure Storage). Each "Generate dataset" creates a new Run; prior Runs remain inspectable. User authentication and per-user session scoping are deferred to a later phase — v1 stores Runs in a single shared scope.
 - Q: How configurable is the fraud-pattern mix — single intensity dial, per-pattern weights, or toggles? → A: One overall fraud-intensity dial **plus** per-pattern weights (normalized to 1.0) for each required pattern (threshold-gaming, unusual frequency, vendor anomaly).
 
+### Session 2026-05-08
+
+- Q: How should the spec characterize the consensus/arbiter feature (3 models side-by-side + arbiter reasoning)? → A: Add FR-026 (consensus: run all 3 models simultaneously, display side-by-side) and FR-027 (arbiter: senior model reasons over results with final verdict) as new functional requirements with acceptance criteria.
+- Q: Should FR-015 be updated to require the scatter plot and dataset summary stats, or keep it generic? → A: Update FR-015 to explicitly require scatter plot (amount vs. confidence, color-coded by band), dataset summary (date range, distinct counts, mean/median amounts), and per-category/per-vendor breakdowns.
+- Q: How should the spec handle the multi-lab architecture (homepage, per-lab routing, embedded How It Works)? → A: Split into separate specs — one for the shared shell/homepage, one per lab. This spec covers only the Expenses lab; multi-lab shell noted in Assumptions.
+- Q: Should the spec capture the footer with Terms of Use, Privacy Policy, and Disclaimer? → A: Defer to the shared shell spec — the footer belongs there, not in the Expenses lab spec.
+- Q: Should acceptance criteria and How It Works be updated to reflect that Inconclusive is now a rare last-resort? → A: Yes, update Story 2 acceptance criteria and the embedded How It Works decision framework. Inconclusive is a last-resort edge case, not a normal expected outcome.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Demonstrate the baseline → fraud uplift narrative (Priority: P1)
@@ -79,9 +87,10 @@ contributing signals the AI cited, and a recommended action.
 
 1. **Given** a case is in the medium-confidence band, **When** the presenter clicks
    "Investigate with AI" on that case, **Then** within a few seconds the case
-   detail view shows: (a) a fraud-likelihood verdict, (b) a human-readable rationale
-   paragraph, (c) an enumerated list of the top contributing signals, and (d) a
-   recommended next action.
+   detail view shows: (a) a fraud-likelihood verdict (predominantly "Likely" or
+   "Unlikely" — "Inconclusive" should be rare per FR-028), (b) a human-readable
+   rationale paragraph, (c) an enumerated list of the top contributing signals,
+   and (d) a recommended next action.
 2. **Given** the AI service is unreachable or returns an unparseable response,
    **When** the presenter clicks "Investigate with AI", **Then** the case detail
    view shows a clear, non-crashing fallback state explaining the AI is
@@ -90,6 +99,19 @@ contributing signals the AI cited, and a recommended action.
 3. **Given** an investigation has completed for a case, **When** the presenter
    reopens the same case in the same session, **Then** the previous AI verdict and
    rationale are still visible without needing a new AI call.
+4. **Given** a case in any confidence band, **When** the presenter clicks
+   "Consensus (all 3 models)", **Then** all 3 deployed models are queried
+   simultaneously and their individual verdicts, rationales, and key signals
+   are displayed **side-by-side** in the UI (FR-026). Each model's result is
+   independently visible even if one or more models fail — failed models show
+   an "Unavailable" badge with the failure reason.
+5. **Given** a consensus investigation has returned results from at least 2
+   models, **When** the arbiter model completes its analysis, **Then** the UI
+   displays below the side-by-side results: (a) the arbiter's final decisive
+   verdict, (b) an executive summary, (c) the points all models agreed on,
+   (d) the key differences between models, and (e) the arbiter's reasoning
+   for its final call (FR-027). If the arbiter call fails, a majority-vote
+   fallback verdict is shown with a note that arbiter reasoning is unavailable.
 
 ---
 
@@ -241,11 +263,37 @@ in the output, without restarting the app or modifying source files.
   stay responsive, the affected case MUST clearly indicate AI unavailability,
   and deterministic detection output for the case MUST remain visible.
 
+#### Consensus & arbiter investigation
+
+- **FR-026**: The system MUST provide a **consensus investigation** mode that
+  runs all deployed AI models (currently 3: GPT-5.4, GPT-5.3 Chat, GPT-5.4
+  Mini) simultaneously on the same case and displays their individual verdicts,
+  rationales, and key signals **side-by-side** in the UI. Each model's result
+  MUST be independently visible even if one or more models fail.
+- **FR-027**: After consensus model results are collected, the system MUST
+  invoke a senior **arbiter model** (the most capable deployed model) that
+  receives all model responses and produces: (a) a final decisive verdict,
+  (b) an executive summary, (c) a list of points the models agreed on,
+  (d) a list of key differences between models, and (e) reasoning for the
+  final verdict. If the arbiter call fails, the system MUST fall back to a
+  majority-vote consensus verdict.
+- **FR-028**: The AI agent system prompts MUST instruct models to be **bold
+  and decisive** — favoring a clear "Likely" or "Unlikely" verdict over
+  "Inconclusive" — because the AI investigator is specifically consulted on
+  cases where the ML model was ambiguous. "Inconclusive" SHOULD only be used
+  when signals are truly balanced.
+
 #### Presentation & interaction
 
-- **FR-015**: The system MUST provide a UI that visualizes the generated dataset
-  and the detection results, including the distribution across the three
-  confidence bands.
+- **FR-015**: The system MUST provide a Run detail view that includes:
+  (a) a **dataset summary** showing date range, distinct employee count,
+  distinct vendor count, distinct category count, average transactions per
+  employee, and mean/median expense amounts; (b) an **anomaly scatter plot**
+  plotting expense amount (x-axis) vs. ML anomaly confidence score (y-axis),
+  color-coded by confidence band (High / Medium / Low); and (c) **per-category
+  and per-vendor breakdowns** showing count, mean, and median expense amounts.
+  Band distribution counts (High / Medium / Low) MUST remain visible as an
+  inline summary.
 - **FR-016**: The UI MUST visually distinguish anomalous cases from normal cases
   and indicate the confidence band.
 - **FR-017**: The UI MUST allow the user to (a) trigger data generation, (b)
@@ -374,3 +422,10 @@ in the output, without restarting the app or modifying source files.
 - **Out of scope for v1**: mobile-specific UI, real ERP/HR integration,
   long-term audit trails, multi-language UI, exporting results to external
   systems.
+- **Multi-lab architecture**: The application is structured as a multi-lab
+  shell with a homepage and per-lab routing (`/labs/expenses`, `/labs/insurance`,
+  `/labs/payments`). This spec covers **only the Expenses lab**. The shared
+  shell (homepage, nav, footer, profile creation, theme toggle) and each
+  additional lab (Insurance, Payments) are covered by separate specs. Each
+  lab embeds its own collapsible "How It Works" panel rather than linking to
+  a standalone page.

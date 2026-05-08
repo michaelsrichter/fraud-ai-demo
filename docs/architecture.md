@@ -5,21 +5,26 @@
 ```
 ┌─────────────────┐    https     ┌──────────────────────────┐
 │ Static Web App  │ ───────────▶ │ Azure Functions          │
-│ (React + Vite)  │              │ (.NET 8 isolated worker) │
+│ (React + Vite)  │              │ (.NET 9 isolated worker)  │
 └─────────────────┘              │  • GenerateRunFunction   │
                                  │  • ListRunsFunction      │
                                  │  • GetRunFunction        │
                                  │  • GetCaseFunction       │
                                  │  • InvestigateCaseFunction│
+                                 │  • ConsensusCaseFunction │
+                                 │  • PreviewPromptFunction │
+                                 │  • DeleteRunFunction     │
                                  └──────┬───────────┬───────┘
                                         │ MI         │ MI
                                         ▼            ▼
                               ┌─────────────┐  ┌──────────────────┐
                               │ Storage     │  │ Microsoft Foundry│
-                              │ (Blob+Table)│  │ (Azure OpenAI)   │
-                              │  runs/*.gz  │  │  ChatClientAgent │
-                              │  RunIndex   │  └──────────────────┘
-                              └─────────────┘
+                              │ (Blob+Table)│  │ (AI Services)    │
+                              │  runs/*.gz  │  │  3 model deploys │
+                              │  RunIndex   │  │  gpt-5.4         │
+                              └─────────────┘  │  gpt-5.3-chat    │
+                                               │  gpt-5.4-mini    │
+                                               └──────────────────┘
 ```
 
 ## Data flow
@@ -41,7 +46,17 @@
    context — never the ground-truth labels), and on success persists the
    `AiInvestigationResult` onto the **originating** run blob (ETag-conditioned;
    one retry on 412). On any failure, returns `Status: Unavailable` and does
-   **not** persist.
+   **not** persist. System prompts instruct models to be bold and decisive
+   (FR-028) — favoring "Likely" or "Unlikely" over "Inconclusive."
+4. **Consensus investigation.** Browser POSTs `/api/runs/{id}/cases/{caseId}/consensus`.
+   `ConsensusCaseFunction` runs all 3 deployed models (GPT-5.4, GPT-5.3 Chat,
+   GPT-5.4 Mini) in **parallel** via `Task.WhenAll`, collecting individual
+   verdicts. Then invokes GPT-5.4 as an **arbiter** model that receives all
+   3 responses and produces: a final verdict, executive summary, agreements,
+   disagreements, and reasoning. If the arbiter call fails, falls back to
+   majority-vote consensus. The frontend displays model results **side-by-side**
+   in a 3-column grid with the arbiter analysis below (FR-026, FR-027).
+   Consensus results are transient (not persisted).
 
 ## Identity & RBAC (Constitution IV)
 

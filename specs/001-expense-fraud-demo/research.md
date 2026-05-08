@@ -231,12 +231,16 @@ schema is the contract for task **T065**):
    provided.
 
 `FraudLikelihood` semantics for the structured output:
-- `Likely` — agent has converged on a probable-fraud judgment with at least
-  one corroborating signal beyond the anomaly score.
+- `Likely` — agent has converged on a probable-fraud judgment. Even a single
+  strong fraud signal (suspicious vendor, threshold gaming, weekend + atypical
+  category, |z| > 2.0) justifies this verdict. The agent is instructed to be
+  bold (FR-028).
 - `Unlikely` — explicit benign explanation found (e.g., recurring legitimate
   vendor for the role, amount within peer 75th percentile).
-- `Inconclusive` — neither corroborated nor refuted; this is the **default
-  on weak signals** and is preferred over a low-confidence `Likely`.
+- `Inconclusive` — **last-resort only** (FR-028). Should be rare. Used only when
+  signals are truly balanced with equal evidence in both directions. The agent
+  is specifically told that Inconclusive is undesirable because it is consulted
+  precisely when the ML model was already inconclusive.
 
 This payload is built from the Run already loaded in memory (no extra
 storage round trips), keeping SC-004 (≤ 10 s) achievable.
@@ -375,6 +379,60 @@ is referenced by RBAC role assignments in Bicep, not by any setting value.
 
 **Alternatives considered**:
 - **Provision Key Vault upfront**: speculative complexity; YAGNI for v1.
+
+---
+
+## R12. Consensus investigation & arbiter pattern (FR-026, FR-027, FR-028)
+
+**Decision**: The consensus endpoint (`POST /api/runs/{runId}/cases/{caseId}/consensus`)
+runs all 3 deployed models (`gpt-5.4`, `gpt-5.3-chat`, `gpt-5.4-mini`) in
+**parallel** using `Task.WhenAll`, then invokes the most capable model (`gpt-5.4`)
+as an **arbiter** that receives the JSON-serialized results from all 3 models
+and produces a meta-analysis.
+
+**Architecture**:
+1. **Parallel fan-out**: 3 independent `IAiInvestigator.InvestigateAsync` calls
+   (same interface as single-model investigation), each with the model name
+   passed explicitly. Each has its own 30 s timeout. If one or more fail, the
+   others still succeed.
+2. **Arbiter call**: A new `ChatClientAgent` with a dedicated system prompt that:
+   - Instructs the arbiter to compare verdicts, rationales, and key signals
+   - Asks for agreements (where models converge) and disagreements (where they
+     diverge)
+   - Requires a final decisive verdict ("Likely" or "Unlikely" preferred; FR-028)
+   - Returns structured JSON: `{ finalVerdict, summary, agreements[], disagreements[], reasoning }`
+3. **Fallback**: If the arbiter call fails (timeout, service error, malformed
+   response), the consensus verdict falls back to a simple majority vote across
+   the 3 model results. The `arbiter` field is null in the response.
+
+**UI presentation (FR-026)**:
+- The 3 model results are shown **side-by-side** in a 3-column grid, each with
+  verdict badge, rationale, and key signals
+- The arbiter analysis appears below in a highlighted panel with the final
+  verdict, executive summary, agreements, disagreements, and reasoning
+
+**System prompt changes (FR-028)**:
+- All agent system prompts are updated to instruct models to be bold and
+  decisive, explicitly discouraging Inconclusive
+- The arbiter prompt is even more aggressive: "You are the tiebreaker. Take a
+  clear position."
+
+**Rationale**:
+- Running 3 models in parallel keeps the total time within ~30 s (same as a
+  single investigation), plus ~15 s for the sequential arbiter call = ~45 s
+  worst case, which is acceptable for a "full analysis" action
+- The arbiter pattern adds genuine value by highlighting model disagreements,
+  which is a key demo talking point (different models emphasize different
+  signals)
+- Reusing `IAiInvestigator` for the fan-out keeps the code DRY and testable
+
+**Alternatives considered**:
+- **Sequential model calls**: simpler but 3× the latency; unacceptable for a
+  live demo
+- **Majority vote without arbiter**: loses the valuable "why did models
+  disagree" narrative; still available as fallback
+- **Separate arbiter service/function**: over-engineering; the arbiter is just
+  another `ChatClientAgent` call in the same endpoint
 
 ---
 

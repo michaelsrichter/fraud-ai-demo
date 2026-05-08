@@ -63,3 +63,74 @@ The endpoint always responds **within ~30 s**; AI failures degrade to
 `Unavailable` rather than `5xx` so the UI can surface a graceful fallback
 (FR-014). Successful investigations are persisted onto the **originating**
 Run blob with ETag concurrency (one retry on 412).
+
+## `POST /runs/{runId}/cases/{caseId}/consensus` — `consensusInvestigate`
+
+Runs all 3 deployed AI models (GPT-5.4, GPT-5.3 Chat, GPT-5.4 Mini)
+simultaneously on the same case, then invokes GPT-5.4 as an arbiter to
+reason over the combined results (FR-026, FR-027).
+
+**Request** (optional):
+
+```json
+{ "temperature": 0.7 }
+```
+
+**Response**: `200 OK`
+
+```json
+{
+  "consensusVerdict": "Likely",
+  "modelCount": 3,
+  "succeededCount": 3,
+  "temperature": 0.7,
+  "models": [
+    {
+      "model": "gpt-5.4",
+      "status": "Succeeded",
+      "verdict": "Likely",
+      "rationale": "Multiple suspicious indicators...",
+      "keySignals": ["Shell company vendor", "Amount near threshold"],
+      "recommendedAction": "Escalate to compliance",
+      "unavailableReason": null
+    },
+    { "model": "gpt-5.3-chat", "status": "Succeeded", "verdict": "Likely", "..." : "..." },
+    { "model": "gpt-5.4-mini", "status": "Succeeded", "verdict": "Unlikely", "..." : "..." }
+  ],
+  "arbiter": {
+    "finalVerdict": "Likely",
+    "summary": "Two of three models flagged this as likely fraud. The vendor anomaly signal is the strongest indicator.",
+    "agreements": ["Vendor is a known shell company pattern", "Amount is near policy threshold"],
+    "disagreements": ["GPT-5.4 Mini did not weight the vendor signal as heavily"],
+    "reasoning": "The convergence of two flagship models on vendor anomaly, combined with threshold gaming, outweighs the mini model's dissent."
+  }
+}
+```
+
+If one or more models fail, their entry shows `"status": "Unavailable"` with
+an `unavailableReason`. Successful models still display normally (FR-026).
+
+If the arbiter call fails, `arbiter` is `null` and `consensusVerdict` falls
+back to a majority vote across the succeeded models (FR-027).
+
+## `GET /runs/{runId}/cases/{caseId}/prompt` — `getPromptPreview`
+
+Returns the system prompt and user prompt that would be sent to the AI agent
+for this case, without invoking the model. Useful for demo transparency.
+
+**Response**: `200 OK`
+
+```json
+{
+  "systemPrompt": "You are an expert internal expense fraud investigator...",
+  "userPrompt": "=== 1. CASE UNDER REVIEW ===\n..."
+}
+```
+
+`404` if the run or case is missing.
+
+## `DELETE /runs/{runId}` — `deleteRun`
+
+Deletes a Run and its associated blob and table index entry.
+
+**Response**: `204 No Content` on success, `404` if not found.

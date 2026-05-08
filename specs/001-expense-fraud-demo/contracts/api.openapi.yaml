@@ -132,6 +132,67 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /runs/{runId}/cases/{caseId}/consensus:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+      - $ref: "#/components/parameters/CaseId"
+    post:
+      tags: [cases]
+      operationId: consensusInvestigate
+      summary: Run all deployed models on a Case and produce arbiter analysis
+      description: |
+        Runs all 3 deployed AI models simultaneously on the same case (FR-026),
+        then invokes the most capable model as an arbiter to reason over the
+        results and produce a final verdict with agreements/disagreements
+        analysis (FR-027). If the arbiter call fails, falls back to majority
+        vote. The consensus result is NOT persisted.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temperature:
+                  type: number
+                  format: float
+                  minimum: 0
+                  maximum: 2
+      responses:
+        "200":
+          description: Consensus result with per-model verdicts and arbiter analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsensusResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /runs/{runId}/cases/{caseId}/prompt:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+      - $ref: "#/components/parameters/CaseId"
+    get:
+      tags: [cases]
+      operationId: getPromptPreview
+      summary: Preview the AI prompt for a Case
+      description: |
+        Returns the system prompt and user prompt that would be sent to the
+        AI agent for this case, without actually invoking the model.
+      responses:
+        "200":
+          description: Prompt preview
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [systemPrompt, userPrompt]
+                properties:
+                  systemPrompt: { type: string }
+                  userPrompt: { type: string }
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
 
   parameters:
@@ -443,3 +504,81 @@ components:
         continuationToken:
           type: string
           nullable: true
+
+    ConsensusResult:
+      type: object
+      required:
+        - consensusVerdict
+        - modelCount
+        - succeededCount
+        - models
+      additionalProperties: false
+      description: |
+        FR-026/FR-027 — result of running all deployed models on a single case,
+        plus optional arbiter meta-analysis.
+      properties:
+        consensusVerdict:
+          type: string
+          description: Final verdict (from arbiter if available, else majority vote)
+        modelCount: { type: integer, minimum: 1 }
+        succeededCount: { type: integer, minimum: 0 }
+        temperature:
+          type: number
+          format: float
+          nullable: true
+        models:
+          type: array
+          items: { $ref: "#/components/schemas/ConsensusModelResult" }
+        arbiter:
+          allOf: [{ $ref: "#/components/schemas/ArbiterResult" }]
+          nullable: true
+
+    ConsensusModelResult:
+      type: object
+      required: [model, status]
+      additionalProperties: false
+      properties:
+        model: { type: string }
+        status: { type: string }
+        verdict:
+          type: string
+          nullable: true
+        rationale:
+          type: string
+          nullable: true
+        keySignals:
+          type: array
+          nullable: true
+          items: { type: string }
+        recommendedAction:
+          type: string
+          nullable: true
+        unavailableReason:
+          type: string
+          nullable: true
+
+    ArbiterResult:
+      type: object
+      required: [finalVerdict, summary, agreements, disagreements, reasoning]
+      additionalProperties: false
+      description: |
+        FR-027 — the arbiter model's meta-analysis of all model responses.
+      properties:
+        finalVerdict:
+          type: string
+          description: "Likely", "Unlikely", or (rarely) "Inconclusive"
+        summary:
+          type: string
+          description: 2-3 sentence executive summary
+        agreements:
+          type: array
+          items: { type: string }
+          description: Points all models agreed on
+        disagreements:
+          type: array
+          items: { type: string }
+          description: Key differences between models
+        reasoning:
+          type: string
+          maxLength: 1500
+          description: Why the arbiter chose this verdict

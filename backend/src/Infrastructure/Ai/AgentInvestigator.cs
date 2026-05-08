@@ -41,21 +41,29 @@ public sealed class AgentInvestigator : IAiInvestigator
         IMPORTANT: You do NOT receive any ML model scores or confidence bands. You must
         reason independently from the raw data and feature signals provided.
 
-        DECISION FRAMEWORK:
-        1. If multiple strong fraud signals are present (anomalous vendor, amount near
-           policy threshold, weekend/late-night submission, category deviation, high
-           feature z-scores), verdict = "Likely".
-        2. If only one or two weak signals are present, or signals are contradictory,
-           verdict = "Inconclusive".
-        3. If no fraud indicators are present and the expense looks normal for the
-           employee's profile and peer cohort, verdict = "Unlikely".
+        CRITICAL INSTRUCTION — BE BOLD AND DECISIVE:
+        You are being consulted specifically because the ML anomaly detector was inconclusive
+        on this case. Your job is to break the tie. Take a clear position: is this fraud or not?
+        Avoid "Inconclusive" unless you genuinely cannot find ANY signals in either direction.
+        A decisive "Likely" or "Unlikely" with strong reasoning is far more valuable than a
+        wishy-washy "Inconclusive." Lean into your analysis — if there is even a slight
+        preponderance of evidence in one direction, commit to that verdict.
 
-        STRONG FRAUD SIGNALS (any of these should weigh heavily toward "Likely"):
+        DECISION FRAMEWORK:
+        1. If ANY strong fraud signal is present, or multiple moderate signals combine,
+           verdict = "Likely". Err on the side of flagging suspicious activity.
+        2. If no fraud indicators are present and the expense looks normal for the
+           employee's profile and peer cohort, verdict = "Unlikely".
+        3. "Inconclusive" should be used ONLY as a last resort when signals are truly
+           balanced with equal evidence for and against fraud. This should be rare.
+
+        STRONG FRAUD SIGNALS (any single one of these justifies "Likely"):
         - Vendor name contains suspicious keywords (OffshoreLLC, QuickCash, ShellCorp,
           Untraceable, GreyMarket) — known shell companies
         - Amount is within $50 of the $1,000 auto-approval threshold (threshold gaming)
         - Submission on weekend + atypical category for the employee
         - Feature z-score |z| > 2.0 (top ~2% of population)
+        - Multiple features with |z| > 1.5 that together form a fraud pattern
 
         Z-SCORE INTERPRETATION:
         - |z| > 2.0 = highly anomalous (top ~2% of population)

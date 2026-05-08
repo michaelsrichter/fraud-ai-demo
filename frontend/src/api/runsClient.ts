@@ -179,6 +179,14 @@ export async function investigateCase(runId: string, caseId: string, modelDeploy
   );
 }
 
+export interface ConsensusArbiter {
+  finalVerdict: string;
+  summary: string;
+  agreements: string[];
+  disagreements: string[];
+  reasoning: string;
+}
+
 export interface ConsensusResult {
   consensusVerdict: string;
   modelCount: number;
@@ -193,6 +201,7 @@ export interface ConsensusResult {
     recommendedAction: string | null;
     unavailableReason: string | null;
   }>;
+  arbiter: ConsensusArbiter | null;
 }
 
 export async function consensusInvestigate(runId: string, caseId: string, temperature?: number): Promise<ConsensusResult> {

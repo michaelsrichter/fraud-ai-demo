@@ -55,6 +55,8 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
         The AI receives the expense details, employee profile, 90-day history, and peer comparison — but
         never the ground-truth labels. Choose a model below — costs vary significantly between tiers.
       </p>
+
+      {/* Model selection */}
       <div className="field" style={{ marginBottom: 8 }}>
         <label>Model</label>
         <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
@@ -70,134 +72,222 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
             {currentModel.tier === "premium" ? "$$$ Premium" : currentModel.tier === "economy" ? "$ Economy" : "$$ Standard"}
           </span>
         </div>
-        <p className="help">
-          A typical investigation uses ~2K input + ~500 output tokens.
-          Est. cost per call: {currentModel.tier === "economy" ? "~$0.004" : "~$0.013"}.
-          Mini is ~70% cheaper than flagship models.
-        </p>
       </div>
-      <div className="field" style={{ marginBottom: 8 }}>
+
+      {/* Temperature */}
+      <div className="field" style={{ marginBottom: 12 }}>
         <label>Temperature: {temperature.toFixed(1)}</label>
         <span className="help">
-          Controls creativity. 0.0 = deterministic, 1.0 = creative, 1.5+ = very creative.
-          Higher values may produce more nuanced reasoning but less consistent results.
+          Controls creativity. 0.0 = deterministic, 1.0 = creative. Higher = more nuanced but less consistent.
         </span>
         <input type="range" min={0} max={2} step={0.1} value={temperature}
           onChange={(e) => setTemperature(Number(e.target.value))} />
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-        <button className="secondary" style={{ fontSize: "0.75rem" }} onClick={handleShowPrompt}>
+
+      {/* Action buttons — grouped together */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        {!investigation && !isLoading && (
+          <button onClick={() => onInvestigate(selectedModel, temperature)}>Investigate with AI</button>
+        )}
+        {investigation?.status === "Succeeded" && (
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>
+            Re-investigate
+          </button>
+        )}
+        {investigation?.status === "Unavailable" && (
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>Retry</button>
+        )}
+        <button
+          className="secondary"
+          style={{ fontSize: "0.8rem" }}
+          onClick={handleConsensus}
+          disabled={loadingConsensus}
+        >
+          {loadingConsensus ? "Running all 3 models…" : "Consensus (all 3 models)"}
+        </button>
+        <button
+          className="secondary"
+          style={{ fontSize: "0.8rem" }}
+          onClick={handleShowPrompt}
+        >
           {loadingPrompt ? "Loading…" : showPrompt ? "Hide prompt" : "Preview AI prompt"}
         </button>
-        <button className="secondary" style={{ fontSize: "0.75rem" }} onClick={handleConsensus} disabled={loadingConsensus}>
-          {loadingConsensus ? "Running all models…" : "Consensus (all 3 models)"}
-        </button>
       </div>
-      <p className="help">
+
+      <p className="help" style={{ marginBottom: 12 }}>
         <strong>Note:</strong> The AI does NOT receive the ML confidence score or band — it reasons
         independently from raw expense data, feature z-scores, employee profile, and peer comparison.
       </p>
-      {consensusResult && (
-        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
-          <h2 style={{ fontSize: "0.95rem", margin: "0 0 8px" }}>
-            Consensus: <span className={`badge badge-${consensusResult.consensusVerdict === "Likely" ? "high" : consensusResult.consensusVerdict === "Unlikely" ? "low" : "medium"}`}>
-              {consensusResult.consensusVerdict}
-            </span>
-            <span className="muted" style={{ marginLeft: 8 }}>
-              ({consensusResult.succeededCount}/{consensusResult.modelCount} models responded)
-            </span>
-          </h2>
-          {consensusResult.models.map((m) => (
-            <div key={m.model} style={{ borderTop: "1px solid var(--border)", padding: "8px 0" }}>
-              <p style={{ margin: "0 0 4px" }}>
-                <strong>{m.model}</strong>:{" "}
-                {m.status === "Succeeded" ? (
-                  <span className={`badge badge-${m.verdict === "Likely" ? "high" : m.verdict === "Unlikely" ? "low" : "medium"}`}>
-                    {m.verdict}
-                  </span>
-                ) : (
-                  <span className="badge badge-medium">Unavailable: {m.unavailableReason}</span>
-                )}
-              </p>
-              {m.rationale && <p className="muted" style={{ fontSize: "0.8rem", margin: "4px 0" }}>{m.rationale}</p>}
-              {m.keySignals && m.keySignals.length > 0 && (
-                <ul className="signals" style={{ fontSize: "0.75rem" }}>
-                  {m.keySignals.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {showPrompt && promptData && (
-        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12, maxHeight: 400, overflow: "auto", fontSize: "0.78rem" }}>
-          <h2 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>System instructions</h2>
-          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)", margin: "0 0 12px" }}>{promptData.systemPrompt}</pre>
-          <h2 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>Case prompt (sent to model)</h2>
-          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text)", margin: 0 }}>{promptData.userPrompt}</pre>
-        </div>
-      )}
-      {!investigation && !isLoading && (
-        <div>
-          <p className="muted">No AI investigation has been run for this case yet.</p>
-          <button onClick={() => onInvestigate(selectedModel, temperature)}>Investigate with AI</button>
-          <p className="help" style={{ marginTop: 8 }}>Typically completes in 5–15 seconds. Timeout at 30 s.</p>
-        </div>
-      )}
+
       {isLoading && <p className="muted">Investigating… The AI agent is analyzing this case (≤30 s).</p>}
+
+      {/* Single model result */}
       {investigation?.status === "Unavailable" && (
-        <div>
+        <div style={{ marginBottom: 12 }}>
           <p>
-            <span className="badge badge-medium">Unavailable</span> &nbsp;
+            <span className="badge badge-medium">Unavailable</span>{" "}
             <span className="muted">{investigation.unavailableReason ?? "unknown reason"}</span>
           </p>
           <p className="help">
-            The AI service was unreachable or timed out. The demo continues to work without it — this
-            is the graceful degradation behavior. Check that Foundry__Endpoint is configured.
+            The AI service was unreachable or timed out. Check that Foundry__Endpoint is configured.
           </p>
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>Retry</button>
         </div>
       )}
+
       {investigation?.status === "Succeeded" && (
-        <div>
-          <p>
-            <strong>Verdict:</strong>{" "}
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <h3 style={{ fontSize: "0.95rem", margin: "0 0 8px" }}>
+            Single Model Result:{" "}
             <span
               className={`badge ${
-                investigation.verdict === "Likely"
-                  ? "badge-high"
-                  : investigation.verdict === "Unlikely"
-                    ? "badge-low"
-                    : "badge-medium"
+                investigation.verdict === "Likely" ? "badge-high"
+                : investigation.verdict === "Unlikely" ? "badge-low" : "badge-medium"
               }`}
             >
               {investigation.verdict}
             </span>
-            <span className="help" style={{ marginLeft: 8 }}>
-              {investigation.verdict === "Likely"
-                ? "The AI believes this is likely fraudulent."
-                : investigation.verdict === "Unlikely"
-                  ? "The AI found no strong fraud indicators."
-                  : "The AI found mixed or weak signals — further review recommended."}
-            </span>
-          </p>
-          <h2>Rationale</h2>
-          <p className="help">The AI's reasoning for its verdict, based on the case data provided.</p>
-          <p style={{ whiteSpace: "pre-wrap" }}>{investigation.rationale}</p>
-          <h2>Key signals</h2>
-          <p className="help">Specific data points the AI identified as noteworthy.</p>
-          <ul className="signals">
-            {investigation.keySignals?.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
+          </h3>
+          <p style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: "0 0 8px" }}>{investigation.rationale}</p>
+          <h4 style={{ fontSize: "0.85rem", margin: "8px 0 4px" }}>Key signals</h4>
+          <ul className="signals" style={{ fontSize: "0.8rem" }}>
+            {investigation.keySignals?.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
-          <p>
+          <p style={{ fontSize: "0.85rem" }}>
             <strong>Recommended action:</strong> {investigation.recommendedAction}
           </p>
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>
-            Re-investigate
-          </button>
-          <span className="help" style={{ marginLeft: 8 }}>Send to AI again (you can pick a different model).</span>
+        </div>
+      )}
+
+      {/* Consensus loading state */}
+      {loadingConsensus && (
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 16, marginBottom: 12, textAlign: "center" }}>
+          <p className="muted">Running all 3 models simultaneously, then the arbiter will reason over results…</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
+            {AVAILABLE_MODELS.map((m) => (
+              <div key={m.name} style={{
+                background: "var(--bg-surface)",
+                borderRadius: 6,
+                padding: 12,
+              }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 600, marginBottom: 4 }}>{m.label}</div>
+                <div className="muted" style={{ fontSize: "0.75rem" }}>Analyzing…</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Consensus results — side by side */}
+      {consensusResult && (
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <h3 style={{ fontSize: "0.95rem", margin: "0 0 12px" }}>
+            Model Responses
+            <span className="muted" style={{ marginLeft: 8, fontSize: "0.8rem", fontWeight: 400 }}>
+              ({consensusResult.succeededCount}/{consensusResult.modelCount} responded)
+            </span>
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+            {consensusResult.models.map((m) => (
+              <div key={m.model} style={{
+                background: "var(--bg-surface)",
+                borderRadius: 6,
+                padding: 12,
+                border: "1px solid var(--border)",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <strong style={{ fontSize: "0.8rem" }}>{m.model}</strong>
+                  {m.status === "Succeeded" ? (
+                    <span className={`badge badge-${m.verdict === "Likely" ? "high" : m.verdict === "Unlikely" ? "low" : "medium"}`}>
+                      {m.verdict}
+                    </span>
+                  ) : (
+                    <span className="badge badge-medium" style={{ fontSize: "0.6rem" }}>Unavailable</span>
+                  )}
+                </div>
+                {m.rationale && (
+                  <p className="muted" style={{ fontSize: "0.75rem", margin: "0 0 6px", lineHeight: 1.5 }}>{m.rationale}</p>
+                )}
+                {m.keySignals && m.keySignals.length > 0 && (
+                  <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
+                    {m.keySignals.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}
+                    {m.keySignals.length > 5 && <li className="muted">+{m.keySignals.length - 5} more</li>}
+                  </ul>
+                )}
+                {m.unavailableReason && (
+                  <p className="muted" style={{ fontSize: "0.7rem" }}>Reason: {m.unavailableReason}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Arbiter analysis */}
+          {consensusResult.arbiter && (
+            <div style={{
+              background: "var(--bg-surface)",
+              borderRadius: 6,
+              padding: 16,
+              border: "2px solid var(--btn-primary)",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h3 style={{ fontSize: "0.95rem", margin: 0 }}>Arbiter Final Verdict</h3>
+                <span className={`badge badge-${
+                  consensusResult.arbiter.finalVerdict === "Likely" ? "high"
+                  : consensusResult.arbiter.finalVerdict === "Unlikely" ? "low" : "medium"
+                }`} style={{ fontSize: "0.75rem", padding: "3px 10px" }}>
+                  {consensusResult.arbiter.finalVerdict}
+                </span>
+              </div>
+              <p style={{ fontSize: "0.85rem", margin: "0 0 12px", fontWeight: 500 }}>
+                {consensusResult.arbiter.summary}
+              </p>
+
+              {consensusResult.arbiter.agreements.length > 0 && (
+                <>
+                  <h4 style={{ fontSize: "0.8rem", margin: "0 0 4px", color: "var(--band-low)" }}>Agreements</h4>
+                  <ul className="signals" style={{ fontSize: "0.78rem", marginBottom: 8 }}>
+                    {consensusResult.arbiter.agreements.map((a, i) => <li key={i}>{a}</li>)}
+                  </ul>
+                </>
+              )}
+
+              {consensusResult.arbiter.disagreements.length > 0 && (
+                <>
+                  <h4 style={{ fontSize: "0.8rem", margin: "0 0 4px", color: "var(--band-medium)" }}>Key Differences</h4>
+                  <ul className="signals" style={{ fontSize: "0.78rem", marginBottom: 8 }}>
+                    {consensusResult.arbiter.disagreements.map((d, i) => <li key={i}>{d}</li>)}
+                  </ul>
+                </>
+              )}
+
+              <h4 style={{ fontSize: "0.8rem", margin: "0 0 4px" }}>Reasoning</h4>
+              <p className="muted" style={{ fontSize: "0.78rem", margin: 0, lineHeight: 1.6 }}>
+                {consensusResult.arbiter.reasoning}
+              </p>
+            </div>
+          )}
+
+          {!consensusResult.arbiter && (
+            <div style={{ textAlign: "center", padding: 8 }}>
+              <h3 style={{ fontSize: "0.95rem", margin: "0 0 4px" }}>
+                Consensus:{" "}
+                <span className={`badge badge-${
+                  consensusResult.consensusVerdict === "Likely" ? "high"
+                  : consensusResult.consensusVerdict === "Unlikely" ? "low" : "medium"
+                }`}>{consensusResult.consensusVerdict}</span>
+              </h3>
+              <p className="muted" style={{ fontSize: "0.78rem" }}>Arbiter reasoning unavailable — verdict based on majority vote.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Prompt preview */}
+      {showPrompt && promptData && (
+        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, maxHeight: 400, overflow: "auto", fontSize: "0.78rem" }}>
+          <h3 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>System instructions</h3>
+          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text-muted)", margin: "0 0 12px" }}>{promptData.systemPrompt}</pre>
+          <h3 style={{ fontSize: "0.85rem", margin: "0 0 8px" }}>Case prompt (sent to model)</h3>
+          <pre style={{ whiteSpace: "pre-wrap", color: "var(--text)", margin: 0 }}>{promptData.userPrompt}</pre>
         </div>
       )}
     </div>

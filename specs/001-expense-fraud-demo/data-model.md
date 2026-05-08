@@ -191,6 +191,46 @@ Used by `GET /api/runs` and stored in the **Table** index for fast listing
 
 ---
 
+## ConsensusResult (API response — NOT persisted)
+
+Returned by `POST /api/runs/{runId}/cases/{caseId}/consensus` (FR-026/FR-027).
+This is a transient response — not stored in the Run aggregate.
+
+| Field | Type | Notes |
+|---|---|---|
+| `ConsensusVerdict` | `string` | Final verdict: from arbiter if available, else majority vote |
+| `ModelCount` | `int` | Number of models queried (currently 3) |
+| `SucceededCount` | `int` | Number that returned successfully |
+| `Temperature` | `float?` | Temperature used for all model calls |
+| `Models` | `ConsensusModelResult[]` | Per-model results, ordered by model name |
+| `Arbiter` | `ArbiterResult?` | Arbiter meta-analysis; null if arbiter call failed |
+
+## ConsensusModelResult (value object — NOT persisted)
+
+| Field | Type | Notes |
+|---|---|---|
+| `Model` | `string` | Model deployment name (e.g. "gpt-5.4") |
+| `Status` | `string` | "Succeeded" or "Unavailable" |
+| `Verdict` | `string?` | "Likely", "Unlikely", or "Inconclusive" (null if unavailable) |
+| `Rationale` | `string?` | Model's reasoning (null if unavailable) |
+| `KeySignals` | `string[]?` | Signals cited (null if unavailable) |
+| `RecommendedAction` | `string?` | Suggested next step (null if unavailable) |
+| `UnavailableReason` | `string?` | Error reason (null if succeeded) |
+
+## ArbiterResult (value object — NOT persisted)
+
+Produced by the arbiter model (FR-027) that reasons over all model responses.
+
+| Field | Type | Notes |
+|---|---|---|
+| `FinalVerdict` | `string` | "Likely", "Unlikely", or (rarely) "Inconclusive" |
+| `Summary` | `string` | 2–3 sentence executive summary |
+| `Agreements` | `string[]` | Points all models agreed on |
+| `Disagreements` | `string[]` | Key differences between models |
+| `Reasoning` | `string` | Why the arbiter chose this verdict (≤ 1500 chars) |
+
+---
+
 ## Persistence mapping
 
 | Domain entity | Storage location | Format |
@@ -198,6 +238,7 @@ Used by `GET /api/runs` and stored in the **Table** index for fast listing
 | `Run` (full aggregate) | Blob: `runs/{runId}.json.gz` | JSON, gzip-compressed; ETag for concurrency |
 | `RunSummary` | Table `RunIndex`: `(PK="v1", RK={runId})` | One row per Run; updated on every Run write |
 | `AiInvestigationResult` | Embedded in the Run blob (under `Investigations`) | Re-written via ETag-conditioned blob write |
+| `ConsensusResult` | Not persisted | Computed per-request; transient API response |
 
 The `IRunRepository` (Application/Abstractions) hides this split — callers
 deal in `Run` aggregates only. The `BlobRunRepository` implementation owns

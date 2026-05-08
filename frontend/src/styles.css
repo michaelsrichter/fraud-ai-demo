@@ -131,21 +131,4 @@ ul.signals li { margin: 2px 0; }
 .preset-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
 .preset-row button { font-size: 0.75rem; padding: 4px 8px; background: var(--btn-secondary); }
 
-/* ── Theme toggle ── */
-.theme-toggle {
-  position: fixed;
-  top: 12px;
-  right: 16px;
-  z-index: 100;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  color: var(--text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.theme-toggle:hover { background: var(--bg-hover); }
+/* ── Theme toggle (integrated in TopNav) ── */

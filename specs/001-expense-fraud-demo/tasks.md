@@ -334,3 +334,93 @@ All tasks above use the strict checklist format `- [X] [TaskID] [P?] [Story?] De
 ## Suggested MVP scope
 
 **Phases 1 + 2 + 3 only** — ships User Story 1 (P1) end-to-end, satisfies the headline narrative, and is independently demoable without ever calling Foundry.
+
+---
+
+## Phase 8: UX Overhaul & Consensus/Arbiter (FR-015, FR-026, FR-027, FR-028)
+
+**Purpose**: Implement the May 2026 spec updates — consensus investigation with side-by-side model comparison, arbiter LLM reasoning, bold/decisive AI prompts, enriched Run detail view (scatter plot + dataset summary stats), UX cleanup (nav, footer, theme toggle, How It Works relocation).
+
+**Maps to**: FR-015 (updated), FR-026, FR-027, FR-028, and UX clarifications from session 2026-05-08.
+
+### Backend — AI prompt & consensus (FR-026, FR-027, FR-028)
+
+- [X] T094 [US2] Update system prompt in `backend/src/Infrastructure/Ai/AgentInvestigator.cs` to instruct models to be bold and decisive per FR-028 — discourage "Inconclusive," favor clear "Likely" or "Unlikely" verdicts
+- [X] T095 [US2] Implement arbiter system prompt and arbiter LLM call in `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` — after collecting 3 model results, invoke GPT-5.4 as arbiter with dedicated prompt that compares verdicts, identifies agreements/disagreements, and produces final verdict (FR-027)
+- [X] T096 [US2] Add fallback logic in `ConsensusCaseFunction.cs` — if arbiter call fails, fall back to majority-vote consensus; return `arbiter: null` in response (FR-027)
+- [X] T097 [P] [US2] Add unit test in `backend/tests/unit/Application.Tests/ConsensusArbiterTests.cs` — (a) verify arbiter fallback to majority vote when arbiter call fails; (b) verify arbiter JSON parsing succeeds and all 5 required fields are present (finalVerdict, summary, agreements, disagreements, reasoning) per FR-027; (c) verify partial model failure (2 of 3 succeed) still produces a valid consensus with arbiter analysis
+- [X] T098 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` verifying the system prompt (a) contains "bold" and "decisive" language, (b) explicitly discourages "Inconclusive" as a verdict, and (c) instructs models that Inconclusive should be a rare last resort per FR-028
+
+### Frontend — Consensus side-by-side UI (FR-026, FR-027)
+
+- [X] T099 [US2] Update `frontend/src/api/runsClient.ts` — add `ConsensusArbiter` type and extend `ConsensusResult` with `arbiter` field
+- [X] T100 [US2] Rewrite `frontend/src/components/AiVerdictPanel.tsx` — show 3 model results side-by-side in a grid; display arbiter panel with final verdict, summary, agreements, disagreements, reasoning; group action buttons (Investigate, Consensus, Preview prompt) together
+- [X] T101 [P] [US2] Update `frontend/tests/components/AiVerdictPanel.test.tsx` — (a) test consensus result rendering with 3-column model grid showing verdict, rationale, and key signals per model; (b) test arbiter panel renders all 5 fields (finalVerdict, summary, agreements, disagreements, reasoning); (c) test partial model failure (1 of 3 Unavailable) renders the failed model with Unavailable badge while successful models display normally (FR-026 acceptance scenario 4); (d) test arbiter-null fallback shows majority-vote verdict
+
+### Frontend — Run detail enrichment (FR-015)
+
+- [X] T102 [US1] Create `frontend/src/components/RunSummaryStats.tsx` — dataset summary cards (date range, employee/vendor/category counts, avg txns/employee, mean/median amounts), anomaly scatter plot (amount vs confidence, color-coded by band), per-category and per-vendor breakdown tables, inline band counts
+- [X] T103 [US1] Update `frontend/src/routes/RunDetailRoute.tsx` — replace `BandChart` with `RunSummaryStats`; add `HowItWorksPanel`
+- [X] T104 [P] [US1] Add frontend test for `RunSummaryStats` in `frontend/tests/components/RunSummaryStats.test.tsx` — verify stat cards render correct values, scatter plot mounts, category/vendor tables render
+
+### Frontend — UX cleanup & navigation
+
+- [X] T105 [P] Update `frontend/src/components/TopNav.tsx` — remove "How It Works" nav link; add GitHub and LinkedIn icon links; integrate theme toggle into nav bar (fix overlap with username)
+- [X] T106 [P] Create `frontend/src/components/HowItWorksPanel.tsx` — collapsible panel embedded in lab pages with pipeline explanation (moved from standalone route)
+- [X] T107 [P] Create `frontend/src/components/Footer.tsx` — Terms of Use, Privacy Policy, Disclaimer with permissive boilerplate; all data is synthetic disclaimer; no liability
+- [X] T108 Update `frontend/src/App.tsx` — remove ThemeToggle (now in TopNav), remove HowItWorksRoute import, add Footer, redirect `/how-it-works` → `/labs/expenses`, add ScrollToTop on route changes
+- [X] T109 Update `frontend/src/routes/HomePage.tsx` — remove "How It Works" link/section; update About text
+- [X] T110 [P] Remove `.theme-toggle` fixed-position CSS from `frontend/src/styles.css`
+- [X] T111 [P] Update LinkedIn URL to correct profile link in `frontend/src/components/TopNav.tsx` and `frontend/src/components/Footer.tsx`
+
+### API contract update
+
+- [X] T112 [P] Update `specs/001-expense-fraud-demo/contracts/api.openapi.yaml` — add `/consensus` and `/prompt` endpoints; add `ConsensusResult`, `ConsensusModelResult`, `ArbiterResult` schemas
+
+### Documentation updates
+
+- [X] T113 [P] Update `docs/api.md` — add consensus endpoint documentation with request/response examples
+- [X] T114 [P] Update `docs/components.md` — document new components (RunSummaryStats, HowItWorksPanel, Footer, updated TopNav)
+- [X] T115 [P] Update `docs/architecture.md` — add consensus/arbiter flow to system diagram
+
+**Checkpoint Phase 8**: Consensus investigation shows 3 models side-by-side with arbiter analysis. Run detail view shows scatter plot + dataset summary. UX is clean with integrated theme toggle, external links, and footer.
+
+---
+
+## Updated Dependencies & Execution Order
+
+### Phase 8 dependencies
+
+- **Backend tasks (T094–T098)**: Depend on Phase 2 + 4 being complete (already done). T094–T096 are already implemented; T097–T098 are new tests.
+- **Frontend consensus (T099–T101)**: Depend on backend consensus endpoint existing (T095, already done). T099–T100 implemented; T101 is new test.
+- **Frontend Run detail (T102–T104)**: Depend on US1 data model. T102–T103 implemented; T104 is new test.
+- **Frontend UX (T105–T111)**: Independent of other Phase 8 tasks; all implemented.
+- **Docs (T113–T115)**: Depend on implementation being complete; can run in parallel.
+
+### Remaining work (not yet complete)
+
+All Phase 8 tasks are now complete.
+
+### Parallel opportunities
+
+- **Tests**: T097, T098, T101, T104 are all `[P]` — four independent test files.
+- **Docs**: T113, T114, T115 are all `[P]` — three independent doc files.
+- All 7 remaining tasks can run in two parallel waves: tests first, then docs.
+
+---
+
+## Updated Task Counts
+
+- **Total tasks**: 115
+- **Setup (Phase 1)**: 11 (T001–T011) ✅ complete
+- **Foundational (Phase 2)**: 19 (T012–T030) ✅ complete
+- **US1 (Phase 3)**: 29 (T031–T059) ✅ complete
+- **US2 (Phase 4)**: 15 (T060–T074) ✅ complete
+- **US3 (Phase 5)**: 4 (T075–T078) ✅ complete
+- **US4 (Phase 6)**: 6 (T079–T084) ✅ complete
+- **Polish (Phase 7)**: 9 (T085–T093) ✅ complete
+- **UX Overhaul + Consensus (Phase 8)**: 22 (T094–T115) — ✅ **all complete**
+
+## Remaining work summary
+
+**All 115 tasks complete.** No remaining work.

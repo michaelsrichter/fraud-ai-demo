@@ -78,4 +78,38 @@ public class AgentInvestigatorTests
         prompt.Should().Contain(employee.Department);
         prompt.Should().Contain("vendorRarity");
     }
+
+    [Fact]
+    public void SystemPrompt_Contains_Bold_And_Decisive_Language()
+    {
+        // FR-028: system prompt must instruct models to be bold and decisive
+        var prompt = AgentInvestigator.SystemPromptText;
+
+        prompt.Should().ContainAny("bold", "Bold", "BOLD");
+        prompt.Should().ContainAny("decisive", "Decisive", "DECISIVE");
+    }
+
+    [Fact]
+    public void SystemPrompt_Discourages_Inconclusive_Verdict()
+    {
+        // FR-028: Inconclusive should be rare last resort
+        var prompt = AgentInvestigator.SystemPromptText;
+
+        // Must mention Inconclusive in a discouraging context
+        prompt.Should().Contain("Inconclusive");
+        // Should contain language indicating it's a last resort
+        prompt.Should().ContainAny("last resort", "rare", "ONLY");
+    }
+
+    [Fact]
+    public void SystemPrompt_Prefers_Likely_Or_Unlikely_Over_Inconclusive()
+    {
+        // FR-028: The prompt should frame Likely/Unlikely as the expected outcomes
+        var prompt = AgentInvestigator.SystemPromptText;
+
+        prompt.Should().Contain("Likely");
+        prompt.Should().Contain("Unlikely");
+        // Should indicate that the AI is consulted because ML was inconclusive
+        prompt.Should().ContainAny("inconclusive", "ambiguous", "tie");
+    }
 }

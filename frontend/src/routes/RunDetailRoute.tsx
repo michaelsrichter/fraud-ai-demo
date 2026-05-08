@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createRun, deleteRun, getRun, type SimulationConfiguration } from "../api/runsClient";
-import { BandChart } from "../components/BandChart";
+import { RunSummaryStats } from "../components/RunSummaryStats";
 import { CaseList } from "../components/CaseList";
 import { ConfigPanel } from "../components/ConfigPanel";
+import { HowItWorksPanel } from "../components/HowItWorksPanel";
 
 export function RunDetailRoute() {
   const { runId } = useParams<{ runId: string }>();
@@ -55,7 +56,6 @@ export function RunDetailRoute() {
                 Created {new Date(runQuery.data.createdUtc).toLocaleString()} · {runQuery.data.expenses.length}{" "}
                 records · intensity {runQuery.data.configuration.intensity.toFixed(2)}
               </p>
-              <BandChart counts={runQuery.data.bandCounts} />
               <button
                 className="secondary"
                 style={{ marginTop: 8, fontSize: "0.8rem" }}
@@ -64,6 +64,8 @@ export function RunDetailRoute() {
                 Delete this run
               </button>
             </div>
+            <RunSummaryStats run={runQuery.data} />
+            <HowItWorksPanel labName="expenses" />
             <div className="panel">
               <h2>Cases</h2>
               <p className="help">

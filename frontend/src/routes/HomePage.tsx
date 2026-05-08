@@ -82,16 +82,18 @@ export function HomePage() {
       </div>
 
       <div className="panel" style={{ marginTop: 32, textAlign: "center" }}>
-        <h2>How It Works</h2>
+        <h2>About This Project</h2>
         <p className="muted">
           Each lab uses the same pattern: generate synthetic data → score with ML.NET anomaly detection →
-          investigate flagged cases with AI agents (GPT-5.4, GPT-5.3, GPT-5.4-mini) via Microsoft Foundry.
+          investigate flagged cases with AI agents via Microsoft Foundry.
+          Each lab includes its own "How It Works" section with details on the detection pipeline.
           You can contrast ML and AI approaches, run consensus investigations across all models, and
           tune parameters to see how fraud signals change.
         </p>
-        <Link to="/how-it-works">
-          <button className="secondary" style={{ marginTop: 8 }}>Learn more →</button>
-        </Link>
+        <p className="muted" style={{ marginTop: 8 }}>
+          Built with agentic coding (vibe coding) to demonstrate how to rapidly prototype fraud detection scenarios.
+          All data is synthetic — no real transactions or individuals are represented.
+        </p>
       </div>
     </div>
   );
