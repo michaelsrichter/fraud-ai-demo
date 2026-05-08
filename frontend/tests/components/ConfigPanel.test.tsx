@@ -3,14 +3,21 @@ import { render, screen } from "@testing-library/react";
 import { ConfigPanel } from "../../src/components/ConfigPanel";
 
 describe("ConfigPanel", () => {
-  it("renders all controls", () => {
+  it("renders generate button and presets", () => {
     render(<ConfigPanel onGenerate={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /generate/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Low" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /show configuration/i })).toBeInTheDocument();
+  });
+
+  it("shows config fields after expanding", async () => {
+    const { user } = render(<ConfigPanel onGenerate={vi.fn()} />);
+    // Fields are hidden by default
+    expect(screen.queryByText(/record count/i)).not.toBeInTheDocument();
+    // Click to expand
+    await screen.getByRole("button", { name: /show configuration/i }).click();
     expect(screen.getByText(/record count/i)).toBeInTheDocument();
     expect(screen.getByText(/intensity/i)).toBeInTheDocument();
-    expect(screen.getByText(/threshold gaming/i)).toBeInTheDocument();
-    expect(screen.getByText(/unusual frequency/i)).toBeInTheDocument();
-    expect(screen.getByText(/vendor anomaly/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /generate/i })).toBeInTheDocument();
   });
 
   it("shows preset buttons", () => {

@@ -56,6 +56,7 @@ function normalizeWeights(w: { thresholdGaming: number; unusualFrequency: number
 export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
   const [config, setConfig] = useState<SimulationConfiguration>({ ...DEFAULT, ...(initial ?? {}) });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const validation = useMemo(() => {
     const e: Record<string, string> = {};
@@ -93,11 +94,19 @@ export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
 
   return (
     <div>
-      <h2>Configuration</h2>
-      <p className="help">
-        Control how synthetic expense data is generated and how much fraud is injected.
-        Use presets for common demo scenarios, or tune each parameter manually.
+      {/* Primary CTA */}
+      <button
+        onClick={submit}
+        disabled={!isValid || isGenerating}
+        style={{ width: "100%", padding: "10px 16px", fontSize: "0.95rem", fontWeight: 600, marginBottom: 10 }}
+      >
+        {isGenerating ? "⏳ Generating..." : "⚡ Generate New Run"}
+      </button>
+      <p className="help" style={{ marginBottom: 10 }}>
+        Creates synthetic expenses, injects fraud, and scores with ML. Pick a preset or customize below.
       </p>
+
+      {/* Presets */}
       <div className="preset-row">
         {Object.keys(PRESETS).map((p) => (
           <button key={p} type="button" onClick={() => applyPreset(p)} title={presetDescriptions[p]}>
@@ -106,6 +115,17 @@ export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
         ))}
       </div>
 
+      {/* Toggle advanced config */}
+      <button
+        className="secondary"
+        style={{ width: "100%", fontSize: "0.75rem", padding: "4px 8px", marginBottom: 8 }}
+        onClick={() => setShowAdvanced(!showAdvanced)}
+      >
+        {showAdvanced ? "▾ Hide configuration" : "▸ Show configuration"}
+      </button>
+
+      {showAdvanced && (
+        <>
       <div className="field">
         <label>Record count</label>
         <span className="help">Total number of synthetic expense records to generate (1–50,000).</span>
@@ -184,10 +204,8 @@ export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
         />
         {errors.patternWeights && <span className="error">{errors.patternWeights}</span>}
       </div>
-
-      <button onClick={submit} disabled={!isValid || isGenerating}>
-        {isGenerating ? "Generating..." : "Generate"}
-      </button>
+        </>
+      )}
     </div>
   );
 }
