@@ -183,10 +183,10 @@ export async function getCase(runId: string, caseId: string): Promise<Case> {
   return jsonRequest(`${API_BASE}/runs/${runId}/cases/${caseId}`, { method: "GET" }, CaseSchema);
 }
 
-export async function investigateCase(runId: string, caseId: string, modelDeploymentName?: string, temperature?: number): Promise<AiInvestigationResult> {
+export async function investigateCase(runId: string, caseId: string, modelDeploymentName?: string, temperature?: number, allowConfidenceScores?: boolean): Promise<AiInvestigationResult> {
   return jsonRequest(
     `${API_BASE}/runs/${runId}/cases/${caseId}/investigate`,
-    { method: "POST", body: JSON.stringify({ modelDeploymentName, temperature }) },
+    { method: "POST", body: JSON.stringify({ modelDeploymentName, temperature, allowConfidenceScores }) },
     AiInvestigationResultSchema,
   );
 }
@@ -217,11 +217,11 @@ export interface ConsensusResult {
   arbiter: ConsensusArbiter | null;
 }
 
-export async function consensusInvestigate(runId: string, caseId: string, temperature?: number): Promise<ConsensusResult> {
+export async function consensusInvestigate(runId: string, caseId: string, temperature?: number, allowConfidenceScores?: boolean): Promise<ConsensusResult> {
   const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/consensus`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ temperature }),
+    body: JSON.stringify({ temperature, allowConfidenceScores }),
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();

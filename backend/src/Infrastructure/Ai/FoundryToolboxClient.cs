@@ -71,6 +71,8 @@ public sealed class FoundryToolboxClient : IFoundryToolboxClient, IAsyncDisposab
                             // Required by Foundry Toolbox API — calls fail without this header
                             ["Foundry-Features"] = "Toolboxes=V1Preview",
                         },
+                        // Code Interpreter sandbox spin-up can take 90s+; extend connection timeout
+                        ConnectionTimeout = TimeSpan.FromSeconds(180),
                     });
 
                     // Foundry Toolbox MCP server does not implement prompts/list or ping;

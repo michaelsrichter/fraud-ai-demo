@@ -103,7 +103,7 @@ public class RunDataQueryServiceTests
     public void Query_FilterByBand_ReturnsCorrectBand()
     {
         var run = MakeRun();
-        var result = _sut.Query(run, new RunDataQuery(Band: ConfidenceBand.High, Detail: true));
+        var result = _sut.Query(run, new RunDataQuery(Band: ConfidenceBand.High, Detail: true, IncludeConfidence: true));
 
         result.Records.Should().NotBeNull();
         result.Records!.Should().AllSatisfy(r => r.Band.Should().Be(ConfidenceBand.High));
@@ -203,6 +203,36 @@ public class RunDataQueryServiceTests
         json.Should().NotContainEquivalentOf("injectedPattern");
     }
 
+    [Fact]
+    public void Query_DefaultStripsConfidenceScores()
+    {
+        var run = MakeRun();
+        var result = _sut.Query(run, new RunDataQuery(Detail: true, Limit: 5));
+
+        result.Records.Should().NotBeNull();
+        result.Records!.Should().AllSatisfy(r =>
+        {
+            r.Confidence.Should().BeNull();
+            r.Band.Should().BeNull();
+            r.TopFeatures.Should().BeNull();
+        });
+    }
+
+    [Fact]
+    public void Query_IncludeConfidenceReturnsScores()
+    {
+        var run = MakeRun();
+        var result = _sut.Query(run, new RunDataQuery(Detail: true, Limit: 5, IncludeConfidence: true));
+
+        result.Records.Should().NotBeNull();
+        result.Records!.Should().AllSatisfy(r =>
+        {
+            r.Confidence.Should().NotBeNull();
+            r.Band.Should().NotBeNull();
+            r.TopFeatures.Should().NotBeNull();
+        });
+    }
+
     // T015: compact mode aggregates correctness
     [Fact]
     public void Query_CompactAggregates_AreCorrect()
@@ -299,7 +329,7 @@ public class RunDataQueryServiceTests
     public void Query_RecordContainsTopFeatures()
     {
         var run = MakeRun();
-        var result = _sut.Query(run, new RunDataQuery(Detail: true, Limit: 1));
+        var result = _sut.Query(run, new RunDataQuery(Detail: true, Limit: 1, IncludeConfidence: true));
 
         result.Records.Should().NotBeNull();
         result.Records!.Should().HaveCountGreaterThan(0);

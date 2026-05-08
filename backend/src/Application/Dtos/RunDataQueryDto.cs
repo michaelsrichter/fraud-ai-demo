@@ -16,7 +16,8 @@ public sealed record RunDataQuery(
     decimal? MinAmount = null,
     decimal? MaxAmount = null,
     int Limit = 100,
-    bool Detail = false)
+    bool Detail = false,
+    bool IncludeConfidence = false)
 {
     /// <summary>Clamps limit to [1, 500] per FR-002.</summary>
     public int EffectiveLimit => Math.Clamp(Limit, 1, 500);

@@ -77,12 +77,17 @@ public sealed class ConsensusCaseFunction
         CancellationToken cancellationToken)
     {
         float? temperature = null;
+        bool allowConfidenceScores = false;
         try
         {
             var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body, cancellationToken: cancellationToken);
             if (body.TryGetProperty("temperature", out var tempProp) && tempProp.ValueKind == JsonValueKind.Number)
             {
                 temperature = tempProp.GetSingle();
+            }
+            if (body.TryGetProperty("allowConfidenceScores", out var confProp) && confProp.ValueKind == JsonValueKind.True)
+            {
+                allowConfidenceScores = true;
             }
         }
         catch { /* empty body is fine */ }
@@ -107,7 +112,7 @@ public sealed class ConsensusCaseFunction
 
         // Run all models in parallel
         var tasks = AllModels.Select(model =>
-            _investigator.InvestigateAsync(run, caseProjection, model, temperature, cancellationToken)
+            _investigator.InvestigateAsync(run, caseProjection, model, temperature, allowConfidenceScores, cancellationToken)
         ).ToArray();
 
         var results = await Task.WhenAll(tasks);

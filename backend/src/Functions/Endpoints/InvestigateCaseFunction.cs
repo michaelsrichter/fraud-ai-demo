@@ -25,6 +25,7 @@ public sealed class InvestigateCaseFunction
     {
         string? modelDeploymentName = null;
         float? temperature = null;
+        bool allowConfidenceScores = false;
         try
         {
             var body = await JsonSerializer.DeserializeAsync<JsonElement>(req.Body, cancellationToken: cancellationToken);
@@ -36,10 +37,14 @@ public sealed class InvestigateCaseFunction
             {
                 temperature = tempProp.GetSingle();
             }
+            if (body.TryGetProperty("allowConfidenceScores", out var confProp) && confProp.ValueKind == JsonValueKind.True)
+            {
+                allowConfidenceScores = true;
+            }
         }
         catch { /* empty body is fine — use defaults */ }
 
-        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId, modelDeploymentName, temperature), cancellationToken);
+        var result = await _handler.HandleAsync(new InvestigateCaseRequest(runId, caseId, modelDeploymentName, temperature, allowConfidenceScores), cancellationToken);
         if (result.RunNotFound)
         {
             return await req.NotFoundAsync("Run not found", $"No run with id {runId:D}.", cancellationToken);

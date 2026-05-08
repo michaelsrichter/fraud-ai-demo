@@ -2,11 +2,12 @@ import { useState } from "react";
 import type { AiInvestigationResult, ConsensusResult } from "../api/runsClient";
 import { AVAILABLE_MODELS, getPromptPreview, consensusInvestigate } from "../api/runsClient";
 import { ToolTracePanel } from "./ToolTracePanel";
+import { InvestigationProgress } from "./InvestigationProgress";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
   isLoading: boolean;
-  onInvestigate: (modelDeploymentName: string, temperature?: number) => void;
+  onInvestigate: (modelDeploymentName: string, temperature?: number, allowConfidenceScores?: boolean) => void;
   runId: string;
   caseId: string;
 }
@@ -20,6 +21,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [consensusResult, setConsensusResult] = useState<ConsensusResult | null>(null);
   const [loadingConsensus, setLoadingConsensus] = useState(false);
+  const [allowConfidenceScores, setAllowConfidenceScores] = useState(false);
 
   const handleShowPrompt = async () => {
     if (showPrompt) { setShowPrompt(false); return; }
@@ -39,7 +41,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
     setLoadingConsensus(true);
     setConsensusResult(null);
     try {
-      const result = await consensusInvestigate(runId, caseId, temperature);
+      const result = await consensusInvestigate(runId, caseId, temperature, allowConfidenceScores);
       setConsensusResult(result);
     } catch (e) {
       console.error(e);
@@ -85,18 +87,36 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
           onChange={(e) => setTemperature(Number(e.target.value))} />
       </div>
 
+      {/* Confidence scores toggle */}
+      <div className="field" style={{ marginBottom: 12 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={allowConfidenceScores}
+            onChange={(e) => setAllowConfidenceScores(e.target.checked)}
+            style={{ width: 16, height: 16 }}
+          />
+          Allow ML confidence scores in tool results
+        </label>
+        <span className="help">
+          {allowConfidenceScores
+            ? "⚠ The AI agent will see ML confidence scores, bands, and feature z-scores when querying expense data. This gives the AI hints about which records the ML model found suspicious."
+            : "The AI agent will NOT see ML confidence scores or bands — it must reason independently from raw expense data only."}
+        </span>
+      </div>
+
       {/* Action buttons — grouped together */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
         {!investigation && !isLoading && (
-          <button onClick={() => onInvestigate(selectedModel, temperature)}>Investigate with AI</button>
+          <button onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>Investigate with AI</button>
         )}
         {investigation?.status === "Succeeded" && (
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>
             Re-investigate
           </button>
         )}
         {investigation?.status === "Unavailable" && (
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature)}>Retry</button>
+          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>Retry</button>
         )}
         <button
           className="secondary"
@@ -120,7 +140,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
         independently from raw expense data, feature z-scores, employee profile, and peer comparison.
       </p>
 
-      {isLoading && <p className="muted">Investigating… The AI agent is analyzing this case (≤30 s).</p>}
+      {isLoading && <InvestigationProgress mode="single" />}
 
       {/* Single model result */}
       {investigation?.status === "Unavailable" && (
@@ -161,23 +181,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
       )}
 
       {/* Consensus loading state */}
-      {loadingConsensus && (
-        <div style={{ background: "var(--bg)", borderRadius: 6, padding: 16, marginBottom: 12, textAlign: "center" }}>
-          <p className="muted">Running all 3 models simultaneously, then the arbiter will reason over results…</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 12 }}>
-            {AVAILABLE_MODELS.map((m) => (
-              <div key={m.name} style={{
-                background: "var(--bg-surface)",
-                borderRadius: 6,
-                padding: 12,
-              }}>
-                <div style={{ fontSize: "0.8rem", fontWeight: 600, marginBottom: 4 }}>{m.label}</div>
-                <div className="muted" style={{ fontSize: "0.75rem" }}>Analyzing…</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {loadingConsensus && <InvestigationProgress mode="consensus" />}
 
       {/* Consensus results — side by side */}
       {consensusResult && (

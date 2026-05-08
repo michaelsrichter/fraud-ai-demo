@@ -27,7 +27,8 @@ public sealed record QueryAggregates(
 
 /// <summary>
 /// A single expense record returned by the tool. NEVER includes IsInjectedFraud
-/// or InjectedPattern (FR-005).
+/// or InjectedPattern (FR-005). Confidence/Band/TopFeatures are null when
+/// IncludeConfidence=false (default) to prevent the AI from using ML scores as hints.
 /// </summary>
 public sealed record ExpenseQueryRecord(
     Guid RecordId,
@@ -38,6 +39,6 @@ public sealed record ExpenseQueryRecord(
     decimal Amount,
     string Category,
     string Vendor,
-    double Confidence,
-    ConfidenceBand Band,
-    IReadOnlyList<FeatureContribution> TopFeatures);
+    double? Confidence,
+    ConfidenceBand? Band,
+    IReadOnlyList<FeatureContribution>? TopFeatures);

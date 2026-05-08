@@ -25,7 +25,7 @@ namespace FraudDemo.Infrastructure.Ai;
 public sealed class AgentInvestigator : IAiInvestigator
 {
     private static readonly TimeSpan DefaultTimeoutBudget = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan ToolAugmentedTimeoutBudget = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan ToolAugmentedTimeoutBudget = TimeSpan.FromSeconds(180);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -93,10 +93,12 @@ public sealed class AgentInvestigator : IAiInvestigator
            - Use detail=false first to get a compact summary with aggregates,
              then detail=true if you need specific records.
 
-        2. code_interpreter — Execute Python code for complex analysis.
+        2. code_interpreter (may appear with a suffix like code_interpreter_*)
+           — Execute Python code for complex analysis.
            Use this for statistical tests, temporal pattern analysis, Benford's law,
            distribution comparisons, or any quantitative analysis that would
-           strengthen your investigation.
+           strengthen your investigation. You can write Python to analyze the data
+           returned by query_expense_data.
 
         TOOL USAGE GUIDANCE:
         - ALWAYS use query_expense_data to examine the vendor's history across the
@@ -104,7 +106,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         - ALWAYS use query_expense_data to look at the employee's full expense
           history — are there patterns of threshold gaming or weekend submissions?
         - Use code_interpreter when you need to compute statistics, run comparisons,
-          or detect temporal patterns that can't be expressed in natural language.
+          or detect temporal patterns that strengthen your analysis.
         - You may call tools multiple times with different parameters.
         - Start with compact summaries (detail=false), then drill into details.
 
@@ -142,7 +144,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         _logger = logger;
     }
 
-    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, CancellationToken cancellationToken)
+    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, bool allowConfidenceScores, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(caseUnderReview);
@@ -170,6 +172,29 @@ public sealed class AgentInvestigator : IAiInvestigator
             var toolInvocations = new List<ToolInvocation>();
             var callCounter = 0;
             var maxCalls = _agentToolOptions.MaxToolCalls;
+
+            // Code Interpreter tools from MCP toolbox FIRST (FR-007, FR-009)
+            // Listed first so the model sees code_interpreter before query_expense_data
+            if (_toolboxClient is not null)
+            {
+                try
+                {
+                    var mcpTools = await _toolboxClient.GetToolsAsync(cts.Token);
+                    if (mcpTools is not null)
+                    {
+                        tools.AddRange(mcpTools);
+                        _logger.LogInformation("Loaded {Count} MCP tools from Foundry Toolbox", mcpTools.Count);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Foundry Toolbox returned no tools — proceeding with data retrieval only");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load Foundry Toolbox tools — proceeding with data retrieval only");
+                }
+            }
 
             // Data retrieval tool — in-process, Run captured in closure (plan R1)
             tools.Add(AIFunctionFactory.Create(
@@ -199,7 +224,8 @@ public sealed class AgentInvestigator : IAiInvestigator
                             MinAmount: minAmount,
                             MaxAmount: maxAmount,
                             Limit: limit ?? 100,
-                            Detail: detail ?? false);
+                            Detail: detail ?? false,
+                            IncludeConfidence: allowConfidenceScores);
 
                         var paramsJson = JsonSerializer.Serialize(query, JsonOptions);
                         var result = _queryService.Query(run, query);
@@ -224,28 +250,6 @@ public sealed class AgentInvestigator : IAiInvestigator
                 "query_expense_data",
                 "Query filtered expense data from the run dataset. Use this to examine vendor history, employee patterns, category breakdowns, etc. Parameters: employeeId, vendor, category, band (High/Medium/Low), dateRangeStart, dateRangeEnd, minAmount, maxAmount, limit (default 100, max 500), detail (default false for compact summary, true for full records)."));
 
-            // Code Interpreter tools from MCP toolbox (FR-007, FR-009)
-            if (_toolboxClient is not null)
-            {
-                try
-                {
-                    var mcpTools = await _toolboxClient.GetToolsAsync(cts.Token);
-                    if (mcpTools is not null)
-                    {
-                        tools.AddRange(mcpTools);
-                        _logger.LogInformation("Loaded {Count} MCP tools from Foundry Toolbox", mcpTools.Count);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Foundry Toolbox returned no tools — proceeding with data retrieval only");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to load Foundry Toolbox tools — proceeding with data retrieval only");
-                }
-            }
-
             var chatOptions = new ChatOptions { ToolMode = ChatToolMode.Auto, Tools = new List<AITool>(tools) };
             // Note: temperature is intentionally NOT set when tools are present.
             // The deployed models (e.g. GPT-5.4) reject non-default temperature
@@ -260,8 +264,9 @@ public sealed class AgentInvestigator : IAiInvestigator
             var agent = new ChatClientAgent(toolAwareChatClient, instructions: SystemPrompt);
 
             var prompt = BuildPrompt(run, caseUnderReview);
-            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} model={Model} temp={Temp} promptLen={Len} tools={ToolCount}",
-                run.RunId, caseUnderReview.Expense.RecordId, deploymentName, temperature, prompt.Length, tools.Count);
+            var toolNames = string.Join(", ", chatOptions.Tools!.Select(t => $"{t.GetType().Name}:{(t is AIFunction f ? f.Name : t.ToString())}"));
+            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} model={Model} temp={Temp} promptLen={Len} tools={ToolCount} toolDefs=[{ToolNames}]",
+                run.RunId, caseUnderReview.Expense.RecordId, deploymentName, temperature, prompt.Length, tools.Count, toolNames);
 
             var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions { ChatOptions = chatOptions }, cancellationToken: cts.Token);
             sw.Stop();
@@ -402,6 +407,11 @@ public sealed class AgentInvestigator : IAiInvestigator
         sb.AppendLine($"thresholds: Low<{run.Configuration.Thresholds.Low:F2}, Medium={run.Configuration.Thresholds.Low:F2}-{run.Configuration.Thresholds.High:F2}, High>{run.Configuration.Thresholds.High:F2}");
         sb.AppendLine($"bandDistribution: High={run.BandCounts.High}, Medium={run.BandCounts.Medium}, Low={run.BandCounts.Low}");
         sb.AppendLine("note: This is a synthetic dataset. Ground-truth labels exist but are NOT supplied to you. Base your verdict on the signals above.");
+        sb.AppendLine();
+        sb.AppendLine("=== INVESTIGATION GUIDANCE ===");
+        sb.AppendLine("Step 1: Use query_expense_data to gather vendor history and employee patterns.");
+        sb.AppendLine("Step 2: If the data suggests an ambiguous pattern, use the code_interpreter tool to run a statistical test (Benford's law, z-score, temporal clustering) to strengthen your analysis.");
+        sb.AppendLine("Step 3: Form your JSON verdict citing the evidence gathered.");
 
         return sb.ToString();
     }

@@ -131,4 +131,18 @@ ul.signals li { margin: 2px 0; }
 .preset-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
 .preset-row button { font-size: 0.75rem; padding: 4px 8px; background: var(--btn-secondary); }
 
+/* ── Investigation progress pulse ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.progress-pulse {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--btn-primary);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
 /* ── Theme toggle (integrated in TopNav) ── */

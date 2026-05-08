@@ -73,7 +73,7 @@ public sealed class RunDataQueryService : IRunDataQueryService
 
         if (query.Detail)
         {
-            var records = sorted.Take(effectiveLimit).Select(x => ToQueryRecord(x.expense, x.detection!, x.employee!)).ToList();
+            var records = sorted.Take(effectiveLimit).Select(x => ToQueryRecord(x.expense, x.detection!, x.employee!, query.IncludeConfidence)).ToList();
             return new RunDataQueryResult(
                 new QueryMetadata(totalMatches, records.Count, records.Count < totalMatches, "detail"),
                 null,
@@ -94,7 +94,7 @@ public sealed class RunDataQueryService : IRunDataQueryService
                 DistinctCategories: matchedExpenses.Select(e => e.Category).Distinct().Count(),
                 DistinctEmployees: matchedExpenses.Select(e => e.EmployeeId).Distinct().Count());
 
-            var topRecords = sorted.Take(10).Select(x => ToQueryRecord(x.expense, x.detection!, x.employee!)).ToList();
+            var topRecords = sorted.Take(10).Select(x => ToQueryRecord(x.expense, x.detection!, x.employee!, query.IncludeConfidence)).ToList();
 
             return new RunDataQueryResult(
                 new QueryMetadata(totalMatches, topRecords.Count, totalMatches > 10, "compact"),
@@ -104,7 +104,7 @@ public sealed class RunDataQueryService : IRunDataQueryService
         }
     }
 
-    private static ExpenseQueryRecord ToQueryRecord(ExpenseRecord expense, DetectionResult detection, Employee employee)
+    private static ExpenseQueryRecord ToQueryRecord(ExpenseRecord expense, DetectionResult detection, Employee employee, bool includeConfidence)
     {
         // FR-005: NEVER include IsInjectedFraud or InjectedPattern
         return new ExpenseQueryRecord(
@@ -116,12 +116,14 @@ public sealed class RunDataQueryService : IRunDataQueryService
             Amount: expense.Amount,
             Category: expense.Category,
             Vendor: expense.Vendor,
-            Confidence: detection.Confidence,
-            Band: detection.Band,
-            TopFeatures: detection.ContributingFeatures
-                .OrderByDescending(f => Math.Abs(f.ZScore))
-                .Take(3)
-                .ToList());
+            Confidence: includeConfidence ? detection.Confidence : null,
+            Band: includeConfidence ? detection.Band : null,
+            TopFeatures: includeConfidence
+                ? detection.ContributingFeatures
+                    .OrderByDescending(f => Math.Abs(f.ZScore))
+                    .Take(3)
+                    .ToList()
+                : null);
     }
 
     private static double Median(IReadOnlyList<double> sorted)

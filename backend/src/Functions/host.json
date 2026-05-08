@@ -18,5 +18,5 @@
       "routePrefix": "api"
     }
   },
-  "functionTimeout": "00:00:35"
+  "functionTimeout": "00:05:00"
 }

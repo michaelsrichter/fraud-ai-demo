@@ -129,7 +129,7 @@ public class AgentInvestigatorToolTests
     {
         var run = MakeRun();
         var svc = new RunDataQueryService();
-        var query = new RunDataQuery(Band: ConfidenceBand.High, Detail: true);
+        var query = new RunDataQuery(Band: ConfidenceBand.High, Detail: true, IncludeConfidence: true);
 
         var result = svc.Query(run, query);
 
