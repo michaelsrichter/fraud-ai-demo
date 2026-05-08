@@ -1,13 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AiVerdictPanel } from "../../src/components/AiVerdictPanel";
-import type { AiInvestigationResult, ConsensusResult } from "../../src/api/runsClient";
-
-// Mock the consensus function so we can test the rendered state
-vi.mock("../../src/api/runsClient", async () => {
-  const actual = await vi.importActual("../../src/api/runsClient");
-  return { ...actual as object };
-});
+import type { AiInvestigationResult } from "../../src/api/runsClient";
 
 describe("AiVerdictPanel", () => {
   it("renders empty state when no investigation", () => {
