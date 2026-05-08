@@ -5,6 +5,12 @@
 **Status**: Draft  
 **Input**: User description: "Add formal AI Investigation Modes to the fraud investigation demo framework."
 
+## Clarifications
+
+### Session 2026-05-08
+
+- Q: Should Debate mode agents execute in parallel or sequentially? → A: Parallel execution
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Debate Mode Investigation (Priority: P1)
@@ -19,7 +25,7 @@ A demo presenter selects "Debate" mode from the investigation mode picker in the
 
 1. **Given** a user is on the investigation page, **When** they select "Debate" mode, configure a model and temperature, and submit a case, **Then** the system runs two biased investigators and one arbiter, returning a final determination with confidence, reasoning, evidence summary, and recommended next steps.
 2. **Given** the Debate mode is active, **When** the user views the mode panel, **Then** they can see the fraud-leaning prompt, the non-fraud-leaning prompt, and the arbiter prompt in scrollable code-style containers.
-3. **Given** Debate mode is selected, **When** a case is submitted, **Then** Agent 1 (fraud-leaning) and Agent 2 (non-fraud-leaning) execute independently and in isolation before their findings are passed to the arbiter.
+3. **Given** Debate mode is selected, **When** a case is submitted, **Then** Agent 1 (fraud-leaning) and Agent 2 (non-fraud-leaning) execute in parallel and in isolation before their findings are passed to the arbiter.
 
 ---
 
@@ -83,7 +89,7 @@ Each investigation mode has a visually distinct presentation that explains its i
 - **FR-001**: System MUST support four investigation modes: Single Agent, Consensus, Debate, and Junior → Senior.
 - **FR-002**: All investigation modes MUST return the same standardized output schema containing: determination, confidence, reasoning, evidence summary, and recommended next steps.
 - **FR-003**: Debate mode MUST use three agents: a fraud-leaning investigator, a non-fraud-leaning investigator, and an arbiter.
-- **FR-004**: Debate mode agents MUST execute independently and in isolation before their findings are passed to the arbiter.
+- **FR-004**: Debate mode agents MUST execute in parallel (concurrently) and in isolation before their findings are passed to the arbiter.
 - **FR-005**: Debate mode fraud-leaning agent MUST use modified instructions that bias it toward identifying possible fraud.
 - **FR-006**: Debate mode non-fraud-leaning agent MUST use modified instructions that bias it toward finding legitimate explanations and avoiding false positives.
 - **FR-007**: Debate mode arbiter MUST receive the original case details and both agents' findings, and produce a final determination using the shared output model.
