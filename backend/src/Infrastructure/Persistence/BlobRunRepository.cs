@@ -125,10 +125,15 @@ public sealed class BlobRunRepository : IRunRepository
         }
     }
 
-    public async Task<RunListPage> ListAsync(int take, string? continuationToken, CancellationToken cancellationToken)
+    public async Task<RunListPage> ListAsync(int take, string? continuationToken, string? ownerId, CancellationToken cancellationToken)
     {
+        var filter = $"PartitionKey eq '{IndexPartition}'";
+        if (!string.IsNullOrWhiteSpace(ownerId))
+        {
+            filter += $" and OwnerId eq '{ownerId}'";
+        }
         var pageable = _table.QueryAsync<RunIndexEntity>(
-            filter: $"PartitionKey eq '{IndexPartition}'",
+            filter: filter,
             maxPerPage: take,
             cancellationToken: cancellationToken);
 
@@ -179,6 +184,7 @@ public sealed class BlobRunRepository : IRunRepository
             run.Configuration.PatternWeights,
             run.Investigations.Count);
         var entity = RunIndexEntity.From(summary);
+        entity.OwnerId = run.OwnerId;
         await _table.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken);
     }
 
@@ -217,6 +223,7 @@ public sealed class BlobRunRepository : IRunRepository
         public double Wf { get; set; }
         public double Wv { get; set; }
         public int InvestigationCount { get; set; }
+        public string OwnerId { get; set; } = string.Empty;
         public string SummaryJson { get; set; } = string.Empty;
 
         public static RunIndexEntity From(RunSummary s) => new()

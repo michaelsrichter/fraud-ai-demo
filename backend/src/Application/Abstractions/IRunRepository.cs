@@ -17,7 +17,7 @@ public interface IRunRepository
     /// <summary>Conditional save (ETag). Returns the new ETag, or null on precondition failure.</summary>
     Task<string?> UpdateAsync(Run run, string ifMatchEtag, CancellationToken cancellationToken);
 
-    Task<RunListPage> ListAsync(int take, string? continuationToken, CancellationToken cancellationToken);
+    Task<RunListPage> ListAsync(int take, string? continuationToken, string? ownerId, CancellationToken cancellationToken);
 
     Task<bool> DeleteAsync(Guid runId, CancellationToken cancellationToken);
 }
