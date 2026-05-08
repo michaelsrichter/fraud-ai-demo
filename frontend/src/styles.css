@@ -154,4 +154,64 @@ ul.signals li { margin: 2px 0; }
   50% { opacity: 0.4; }
 }
 
+/* ── Run detail sub-header ── */
+.run-subheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.back-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--link);
+  text-decoration: none;
+}
+.back-link:hover { text-decoration: underline; }
+.run-subheader-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+.run-subheader-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.run-subheader-stat {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.run-subheader-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.run-subheader-badge.badge-high { background: var(--badge-high-bg); color: var(--badge-high-fg); }
+.run-subheader-badge.badge-medium { background: var(--badge-medium-bg); color: var(--badge-medium-fg); }
+.run-subheader-badge.badge-low { background: var(--badge-low-bg); color: var(--badge-low-fg); }
+
+/* ── CTA banner ── */
+.cta-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--badge-medium-bg);
+  color: var(--badge-medium-fg);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--band-medium);
+  transition: background 0.15s;
+}
+.cta-banner:hover { background: color-mix(in srgb, var(--badge-medium-bg) 80%, white 20%); }
+.cta-banner-icon { font-size: 1.5rem; flex-shrink: 0; }
+.cta-banner-arrow { font-size: 1.2rem; margin-left: auto; flex-shrink: 0; opacity: 0.7; }
+
 /* ── Theme toggle (integrated in TopNav) ── */
