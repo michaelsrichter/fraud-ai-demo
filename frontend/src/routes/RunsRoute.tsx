@@ -25,14 +25,13 @@ export function RunsRoute() {
   return (
     <div className="layout">
       <aside className="sidebar">
-        <h1>Fraud Demo</h1>
-        <a href="/how-it-works" style={{ fontSize: "0.8rem" }}>How it works &rarr;</a>
         <ConfigPanel onGenerate={(c) => createMutation.mutate(c)} isGenerating={createMutation.isPending} />
         {createMutation.error && <p className="error">{(createMutation.error as Error).message}</p>}
-        <h2>Prior runs</h2>
-        <p className="help">Click a run to re-open it. Compare band distributions across different configurations.</p>
-        {runsQuery.isLoading && <p className="muted">Loading…</p>}
-        {runsQuery.data?.items.map((r) => (
+        <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          <h2 style={{ margin: "0 0 6px" }}>Prior runs</h2>
+          <p className="help">Click a run to re-open it.</p>
+          {runsQuery.isLoading && <p className="muted">Loading…</p>}
+          {runsQuery.data?.items.map((r) => (
           <div key={r.runId} className="run-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
             <div onClick={() => navigate(`/labs/expenses/${r.runId}`)} style={{ flex: 1, cursor: "pointer" }}>
               <div style={{ fontSize: "0.8rem" }}>{new Date(r.createdUtc).toLocaleString()}</div>
@@ -51,32 +50,26 @@ export function RunsRoute() {
           </div>
         ))}
         {runsQuery.data?.items.length === 0 && <p className="muted">No runs yet.</p>}
+        </div>
       </aside>
       <main className="main">
         <div className="panel">
-          <h2>AI-Powered Expense Fraud Detection Demo</h2>
-          <p className="muted">
+          <h2>AI-Powered Expense Fraud Detection</h2>
+          <p className="muted" style={{ lineHeight: 1.8 }}>
             This demo contrasts <strong>deterministic ML detection</strong> with <strong>AI-powered investigation</strong> on
-            synthetic expense data. Here's how to use it:
+            synthetic expense data.
           </p>
           <ol className="muted" style={{ paddingLeft: 20, lineHeight: 1.8 }}>
-            <li><strong>Configure</strong> — Use the sidebar to set how many expense records to generate, how much
-            fraud to inject (intensity), and which fraud patterns to emphasize.</li>
-            <li><strong>Generate</strong> — Click Generate to create a synthetic dataset. The backend synthesizes
-            employee profiles and expense records, injects fraud at the configured rate, then scores every
-            record with ML.NET's RandomizedPCA anomaly detector.</li>
-            <li><strong>Review bands</strong> — Records are bucketed into <span style={{color:"#ef4444"}}>High</span>,{" "}
-            <span style={{color:"#f59e0b"}}>Medium</span>, and <span style={{color:"#22c55e"}}>Low</span> confidence
-            bands. Higher intensity → more records in the High band.</li>
-            <li><strong>Drill into cases</strong> — Click any row to see the expense details, the employee profile,
-            and which features (amount z-score, vendor rarity, weekend submission, etc.) drove the anomaly score.</li>
-            <li><strong>AI investigation</strong> — From any case, click "Investigate with AI" and choose a model
-            (gpt-4.1, o3, or o4-mini) from the dropdown — all deployed in Microsoft Foundry.</li>
+            <li><strong>Generate a run</strong> — Use the <strong>⚡ Generate New Run</strong> button in the sidebar. Pick a preset or customize the fraud configuration.</li>
+            <li><strong>Review the results</strong> — Records are bucketed into <span style={{color:"#ef4444"}}>High</span>,{" "}
+            <span style={{color:"#f59e0b"}}>Medium</span>, and <span style={{color:"#22c55e"}}>Low</span> confidence bands by the ML anomaly detector.</li>
+            <li><strong>Investigate with AI</strong> — Medium-band cases have ambiguous signals. Click into any case and send it to the AI agent for a deeper investigation using tool-augmented reasoning.</li>
           </ol>
-          <p className="muted">
-            Try the <strong>Low</strong> preset first, then switch to <strong>High — Vendor</strong> and compare how
-            the band chart shifts. That's the demo's headline narrative.
-          </p>
+          {runsQuery.data?.items.length === 0 && (
+            <p style={{ marginTop: 12, padding: "12px 16px", background: "var(--badge-medium-bg)", color: "var(--badge-medium-fg)", borderRadius: 8, fontSize: "0.9rem" }}>
+              👈 <strong>Get started</strong> — Click <strong>⚡ Generate New Run</strong> in the sidebar to create your first dataset.
+            </p>
+          )}
         </div>
       </main>
     </div>
