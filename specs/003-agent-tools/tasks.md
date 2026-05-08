@@ -29,10 +29,10 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 **Purpose**: Add new NuGet packages, app settings, and configuration classes needed for tools.
 
-- [ ] T001 Add NuGet package `ModelContextProtocol` (C# MCP SDK, GA) to `backend/src/Infrastructure/Infrastructure.csproj`
-- [ ] T002 [P] Add new app settings to `backend/src/Functions/local.settings.json` and `local.settings.template.json`: `Foundry__ProjectEndpoint`, `Foundry__ToolboxName` (default `fraud-ai-tools`), `Foundry__ToolboxVersion` (default `1`), `Agent__MaxToolCalls` (default `10`), `Agent__ToolTimeoutSeconds` (default `60`)
-- [ ] T003 [P] Extend `backend/src/Application/Configuration/Options.cs` — add `FoundryToolboxOptions` class with `ProjectEndpoint`, `ToolboxName`, `ToolboxVersion` properties; add `AgentToolOptions` class with `MaxToolCalls`, `ToolTimeoutSeconds` properties
-- [ ] T004 [P] Register `IOptions<FoundryToolboxOptions>` and `IOptions<AgentToolOptions>` in `backend/src/Functions/Program.cs` DI, bound from configuration sections `Foundry` and `Agent`
+- [X] T001 Add NuGet package `ModelContextProtocol` (C# MCP SDK, GA) to `backend/src/Infrastructure/Infrastructure.csproj`
+- [X] T002 [P] Add new app settings to `backend/src/Functions/local.settings.json` and `local.settings.template.json`: `Foundry__ProjectEndpoint`, `Foundry__ToolboxName` (default `fraud-ai-tools`), `Foundry__ToolboxVersion` (default `1`), `Agent__MaxToolCalls` (default `10`), `Agent__ToolTimeoutSeconds` (default `60`)
+- [X] T003 [P] Extend `backend/src/Application/Configuration/Options.cs` — add `FoundryToolboxOptions` class with `ProjectEndpoint`, `ToolboxName`, `ToolboxVersion` properties; add `AgentToolOptions` class with `MaxToolCalls`, `ToolTimeoutSeconds` properties
+- [X] T004 [P] Register `IOptions<FoundryToolboxOptions>` and `IOptions<AgentToolOptions>` in `backend/src/Functions/Program.cs` DI, bound from configuration sections `Foundry` and `Agent`
 
 ---
 
@@ -42,15 +42,15 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 **⚠️ CRITICAL**: No `[US*]` task may start until Phase 2 is complete.
 
-- [ ] T005 [P] Create `backend/src/Domain/Entities/ToolInvocation.cs` — immutable record with fields: `ToolName` (string), `Parameters` (string), `ResponseSummary` (string), `ResponseData` (string?), `Reasoning` (string?), `LatencyMs` (long), `Succeeded` (bool); constructor validation per data-model.md
-- [ ] T006 Modify `backend/src/Domain/Entities/AiInvestigationResult.cs` — add `IReadOnlyList<ToolInvocation>? ToolTrace` property; update constructor + factory methods `Succeeded()` / `Unavailable()` to accept optional `toolTrace` parameter (default null for backward compat)
-- [ ] T007 [P] Create `backend/src/Application/Dtos/RunDataQueryDto.cs` — record with filter fields: `EmployeeId` (Guid?), `Vendor` (string?), `Category` (string?), `Band` (ConfidenceBand?), `DateRangeStart` (DateTimeOffset?), `DateRangeEnd` (DateTimeOffset?), `MinAmount` (decimal?), `MaxAmount` (decimal?), `Limit` (int, default 100), `Detail` (bool, default false); validation logic per data-model.md
-- [ ] T008 [P] Create `backend/src/Application/Dtos/RunDataQueryResultDto.cs` — records for `RunDataQueryResult`, `QueryMetadata`, `QueryAggregates`, and `ExpenseQueryRecord` per data-model.md; `ExpenseQueryRecord` MUST NOT include `IsInjectedFraud` or `InjectedPattern` (FR-005)
-- [ ] T009 [P] Create `backend/src/Application/Dtos/ToolInvocationDto.cs` — serialization DTO matching `ToolInvocation` for JSON responses to the frontend
-- [ ] T010 [P] Create `backend/src/Application/Abstractions/IRunDataQueryService.cs` — interface: `RunDataQueryResult Query(Run run, RunDataQuery query)`
-- [ ] T011 [P] Create `backend/src/Application/Abstractions/IFoundryToolboxClient.cs` — interface: `Task<IReadOnlyList<AITool>?> GetToolsAsync(CancellationToken ct)` + `Task CloseAsync()`
-- [ ] T012 [P] Create `backend/tests/unit/Domain.Tests/ToolInvocationTests.cs` — validate constructor rejects empty ToolName, empty Parameters, negative LatencyMs
-- [ ] T013 [P] Create `backend/tests/unit/Domain.Tests/AiInvestigationResultToolTraceTests.cs` — verify `Succeeded()` with ToolTrace serializes correctly; verify `Unavailable()` has null ToolTrace; verify backward compat with null ToolTrace
+- [X] T005 [P] Create `backend/src/Domain/Entities/ToolInvocation.cs` — immutable record with fields: `ToolName` (string), `Parameters` (string), `ResponseSummary` (string), `ResponseData` (string?), `Reasoning` (string?), `LatencyMs` (long), `Succeeded` (bool); constructor validation per data-model.md
+- [X] T006 Modify `backend/src/Domain/Entities/AiInvestigationResult.cs` — add `IReadOnlyList<ToolInvocation>? ToolTrace` property; update constructor + factory methods `Succeeded()` / `Unavailable()` to accept optional `toolTrace` parameter (default null for backward compat)
+- [X] T007 [P] Create `backend/src/Application/Dtos/RunDataQueryDto.cs` — record with filter fields: `EmployeeId` (Guid?), `Vendor` (string?), `Category` (string?), `Band` (ConfidenceBand?), `DateRangeStart` (DateTimeOffset?), `DateRangeEnd` (DateTimeOffset?), `MinAmount` (decimal?), `MaxAmount` (decimal?), `Limit` (int, default 100), `Detail` (bool, default false); validation logic per data-model.md
+- [X] T008 [P] Create `backend/src/Application/Dtos/RunDataQueryResultDto.cs` — records for `RunDataQueryResult`, `QueryMetadata`, `QueryAggregates`, and `ExpenseQueryRecord` per data-model.md; `ExpenseQueryRecord` MUST NOT include `IsInjectedFraud` or `InjectedPattern` (FR-005)
+- [X] T009 [P] Create `backend/src/Application/Dtos/ToolInvocationDto.cs` — serialization DTO matching `ToolInvocation` for JSON responses to the frontend
+- [X] T010 [P] Create `backend/src/Application/Abstractions/IRunDataQueryService.cs` — interface: `RunDataQueryResult Query(Run run, RunDataQuery query)`
+- [X] T011 [P] Create `backend/src/Application/Abstractions/IFoundryToolboxClient.cs` — interface: `Task<IReadOnlyList<AITool>?> GetToolsAsync(CancellationToken ct)` + `Task CloseAsync()`
+- [X] T012 [P] Create `backend/tests/unit/Domain.Tests/ToolInvocationTests.cs` — validate constructor rejects empty ToolName, empty Parameters, negative LatencyMs
+- [X] T013 [P] Create `backend/tests/unit/Domain.Tests/AiInvestigationResultToolTraceTests.cs` — verify `Succeeded()` with ToolTrace serializes correctly; verify `Unavailable()` has null ToolTrace; verify backward compat with null ToolTrace
 
 **Checkpoint**: All types exist. User-story implementation can begin.
 
@@ -72,15 +72,15 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 ### Backend implementation for US1
 
-- [ ] T017 [US1] Implement `backend/src/Application/Services/RunDataQueryService.cs` (`IRunDataQueryService`) — pure filter + aggregation logic: accepts `(Run, RunDataQuery)`, applies all filters (AND logic), computes compact aggregates or returns detail records, strips `IsInjectedFraud`/`InjectedPattern`, respects `limit` cap at 500, sorts by confidence descending
-- [ ] T018 [US1] Implement `backend/src/Functions/Endpoints/ExpenseDataQueryFunction.cs` — `POST /api/runs/{runId}/tools/expenses/query`; loads Run from `IRunRepository`, deserializes `RunDataQuery` from body, delegates to `IRunDataQueryService`, returns `RunDataQueryResult` JSON; returns 404 if run not found
-- [ ] T019 [US1] Wire `IRunDataQueryService` → `RunDataQueryService` in `backend/src/Functions/Program.cs` DI
+- [X] T017 [US1] Implement `backend/src/Application/Services/RunDataQueryService.cs` (`IRunDataQueryService`) — pure filter + aggregation logic: accepts `(Run, RunDataQuery)`, applies all filters (AND logic), computes compact aggregates or returns detail records, strips `IsInjectedFraud`/`InjectedPattern`, respects `limit` cap at 500, sorts by confidence descending
+- [X] T018 [US1] Implement `backend/src/Functions/Endpoints/ExpenseDataQueryFunction.cs` — `POST /api/runs/{runId}/tools/expenses/query`; loads Run from `IRunRepository`, deserializes `RunDataQuery` from body, delegates to `IRunDataQueryService`, returns `RunDataQueryResult` JSON; returns 404 if run not found
+- [X] T019 [US1] Wire `IRunDataQueryService` → `RunDataQueryService` in `backend/src/Functions/Program.cs` DI
 
 ### Agent integration for US1
 
-- [ ] T020 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — create a private method `CreateDataRetrievalTool(Run run)` that returns an `AIFunction` wrapping `RunDataQueryService.Query()` with the Run captured in closure; the function accepts filter parameters as a JSON string, parses to `RunDataQuery`, calls the service, serializes the result, and includes a call counter enforcing `MaxToolCalls` (FR-013)
-- [ ] T021 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) create the data retrieval tool via `CreateDataRetrievalTool(run)`, (b) pass it in `ChatOptions.Tools`, (c) set `ChatOptions.ToolMode = ChatToolMode.Auto`, (d) extend timeout to 60s when tools are present (FR-021)
-- [ ] T022 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — after `agent.RunAsync()`, iterate `response.Messages` to build `IReadOnlyList<ToolInvocation>` capturing each tool call (name, parameters, response summary, latency, success), plus any intermediate assistant reasoning messages (FR-017); pass to `AiInvestigationResult.Succeeded()`; add `ILogger` structured logging for each tool invocation: tool name, parameters summary, latency, success/failure (FR-012)
+- [X] T020 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — create a private method `CreateDataRetrievalTool(Run run)` that returns an `AIFunction` wrapping `RunDataQueryService.Query()` with the Run captured in closure; the function accepts filter parameters as a JSON string, parses to `RunDataQuery`, calls the service, serializes the result, and includes a call counter enforcing `MaxToolCalls` (FR-013)
+- [X] T021 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) create the data retrieval tool via `CreateDataRetrievalTool(run)`, (b) pass it in `ChatOptions.Tools`, (c) set `ChatOptions.ToolMode = ChatToolMode.Auto`, (d) extend timeout to 60s when tools are present (FR-021)
+- [X] T022 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — after `agent.RunAsync()`, iterate `response.Messages` to build `IReadOnlyList<ToolInvocation>` capturing each tool call (name, parameters, response summary, latency, success), plus any intermediate assistant reasoning messages (FR-017); pass to `AiInvestigationResult.Succeeded()`; add `ILogger` structured logging for each tool invocation: tool name, parameters summary, latency, success/failure (FR-012)
 - [ ] T023 [P] [US1] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` — verify `CreateDataRetrievalTool` returns correctly filtered results when called with test parameters; verify it strips ground-truth labels; verify call counter returns "max reached" message after configured limit
 
 **Checkpoint US1**: Data retrieval tool works in-process. Agent can query run data and tool trace is captured.
@@ -93,10 +93,10 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 **Maps to**: FR-014 → FR-016.
 
-- [ ] T024 [US4] Update the system prompt in `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — append the "AVAILABLE TOOLS" and "TOOL USAGE GUIDANCE" sections from plan.md §R4 after the FEATURE MEANINGS section and before the JSON output format
-- [ ] T025 [US4] Verify the arbiter system prompt in `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` does NOT contain any tool descriptions or tool-usage encouragement (FR-016)
-- [ ] T026 [P] [US4] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` — verify system prompt contains "query_expense_data" and "code_interpreter" tool descriptions, "TOOL USAGE GUIDANCE" section, and "ALWAYS use" encouragement language (FR-014, FR-015)
-- [ ] T027 [P] [US4] Add unit test verifying arbiter prompt does NOT contain "query_expense_data", "code_interpreter", or "TOOL USAGE" (FR-016)
+- [X] T024 [US4] Update the system prompt in `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — append the "AVAILABLE TOOLS" and "TOOL USAGE GUIDANCE" sections from plan.md §R4 after the FEATURE MEANINGS section and before the JSON output format
+- [X] T025 [US4] Verify the arbiter system prompt in `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` does NOT contain any tool descriptions or tool-usage encouragement (FR-016)
+- [X] T026 [P] [US4] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` — verify system prompt contains "query_expense_data" and "code_interpreter" tool descriptions, "TOOL USAGE GUIDANCE" section, and "ALWAYS use" encouragement language (FR-014, FR-015)
+- [X] T027 [P] [US4] Add unit test verifying arbiter prompt does NOT contain "query_expense_data", "code_interpreter", or "TOOL USAGE" (FR-016)
 
 **Checkpoint US4**: Prompts guide tool use. Arbiter is clean.
 
@@ -132,18 +132,18 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 ### Frontend types & API
 
-- [ ] T033 [US3] Update `frontend/src/api/runsClient.ts` — add `ToolInvocation` type with fields `toolName`, `parameters`, `responseSummary`, `responseData`, `reasoning`, `latencyMs`, `succeeded`; extend `AiInvestigationResult` type with optional `toolTrace: ToolInvocation[]`; extend `ConsensusModelResult` with optional `toolTrace: ToolInvocation[]`
+- [X] T033 [US3] Update `frontend/src/api/runsClient.ts` — add `ToolInvocation` type with fields `toolName`, `parameters`, `responseSummary`, `responseData`, `reasoning`, `latencyMs`, `succeeded`; extend `AiInvestigationResult` type with optional `toolTrace: ToolInvocation[]`; extend `ConsensusModelResult` with optional `toolTrace: ToolInvocation[]`
 
 ### Frontend implementation
 
-- [ ] T034 [US3] Create `frontend/src/components/ToolTracePanel.tsx` — collapsible "Agent Reasoning Trace" section; renders each `ToolInvocation` as a card with: tool icon + name, collapsible parameters (JSON formatted), response summary (always visible), reasoning text (if present); for Code Interpreter: render submitted Python code in a `<pre>` code block, execution output with "show more" truncation at 500 chars (FR-020)
-- [ ] T035 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — render `ToolTracePanel` inside the single-model result section after the rationale (when `toolTrace` is non-null/non-empty); show "No tools invoked" when trace is null/empty
-- [ ] T036 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — in the consensus side-by-side grid, render `ToolTracePanel` inside each model's column panel (FR-019)
+- [X] T034 [US3] Create `frontend/src/components/ToolTracePanel.tsx` — collapsible "Agent Reasoning Trace" section; renders each `ToolInvocation` as a card with: tool icon + name, collapsible parameters (JSON formatted), response summary (always visible), reasoning text (if present); for Code Interpreter: render submitted Python code in a `<pre>` code block, execution output with "show more" truncation at 500 chars (FR-020)
+- [X] T035 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — render `ToolTracePanel` inside the single-model result section after the rationale (when `toolTrace` is non-null/non-empty); show "No tools invoked" when trace is null/empty
+- [X] T036 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — in the consensus side-by-side grid, render `ToolTracePanel` inside each model's column panel (FR-019)
 
 ### Frontend tests
 
-- [ ] T037 [P] [US3] Create `frontend/tests/components/ToolTracePanel.test.tsx` — given a ToolInvocation with `query_expense_data`, renders tool name, parameters, response summary; given a Code Interpreter invocation, renders Python code block and output; given empty trace, renders "No tools invoked" or is absent
-- [ ] T038 [P] [US3] Update `frontend/tests/components/AiVerdictPanel.test.tsx` — add test verifying ToolTracePanel renders when investigation has toolTrace; verify it does NOT render when toolTrace is null
+- [X] T037 [P] [US3] Create `frontend/tests/components/ToolTracePanel.test.tsx` — given a ToolInvocation with `query_expense_data`, renders tool name, parameters, response summary; given a Code Interpreter invocation, renders Python code block and output; given empty trace, renders "No tools invoked" or is absent
+- [X] T038 [P] [US3] Update `frontend/tests/components/AiVerdictPanel.test.tsx` — add test verifying ToolTracePanel renders when investigation has toolTrace; verify it does NOT render when toolTrace is null
 
 **Checkpoint US3**: Tool trace visible in the UI for both single-model and consensus investigations.
 

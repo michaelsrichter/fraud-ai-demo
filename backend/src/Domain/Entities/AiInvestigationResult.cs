@@ -14,6 +14,7 @@ public sealed record AiInvestigationResult
     public IReadOnlyList<string>? KeySignals { get; }
     public string? RecommendedAction { get; }
     public string? UnavailableReason { get; }
+    public IReadOnlyList<ToolInvocation>? ToolTrace { get; }
 
     public AiInvestigationResult(
         Guid recordId,
@@ -25,7 +26,8 @@ public sealed record AiInvestigationResult
         string? rationale,
         IReadOnlyList<string>? keySignals,
         string? recommendedAction,
-        string? unavailableReason)
+        string? unavailableReason,
+        IReadOnlyList<ToolInvocation>? toolTrace = null)
     {
         RecordId = recordId;
         RunId = runId;
@@ -37,6 +39,7 @@ public sealed record AiInvestigationResult
         KeySignals = keySignals;
         RecommendedAction = recommendedAction;
         UnavailableReason = unavailableReason;
+        ToolTrace = toolTrace;
     }
 
     public static AiInvestigationResult Succeeded(
@@ -47,7 +50,8 @@ public sealed record AiInvestigationResult
         FraudLikelihood verdict,
         string rationale,
         IReadOnlyList<string> keySignals,
-        string recommendedAction)
+        string recommendedAction,
+        IReadOnlyList<ToolInvocation>? toolTrace = null)
     {
         if (recordId == Guid.Empty) throw new ArgumentException("RecordId required.", nameof(recordId));
         if (runId == Guid.Empty) throw new ArgumentException("RunId required.", nameof(runId));
@@ -67,7 +71,8 @@ public sealed record AiInvestigationResult
             rationale,
             keySignals,
             recommendedAction,
-            null);
+            null,
+            toolTrace);
     }
 
     public static AiInvestigationResult Unavailable(

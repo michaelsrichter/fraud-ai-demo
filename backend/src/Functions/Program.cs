@@ -29,6 +29,7 @@ var host = new HostBuilder()
         services.Configure<StorageOptions>(ctx.Configuration.GetSection("Storage"));
         services.Configure<FoundryOptions>(ctx.Configuration.GetSection("Foundry"));
         services.Configure<DetectionOptions>(ctx.Configuration.GetSection("Detection"));
+        services.Configure<AgentToolOptions>(ctx.Configuration.GetSection("Agent"));
 
         services.AddSingleton<TokenCredential>(_ => new DefaultAzureCredential());
 
@@ -39,6 +40,7 @@ var host = new HostBuilder()
         services.AddSingleton<IAnomalyScorer, MlNetAnomalyScorer>();
         services.AddSingleton<IRunRepository, BlobRunRepository>();
         services.AddSingleton<IAiInvestigator, AgentInvestigator>();
+        services.AddSingleton<IRunDataQueryService, RunDataQueryService>();
 
         services.AddSingleton<SimulationConfigurationMapper>();
         services.AddSingleton<GenerateRunHandler>();

@@ -112,4 +112,32 @@ public class AgentInvestigatorTests
         // Should indicate that the AI is consulted because ML was inconclusive
         prompt.Should().ContainAny("inconclusive", "ambiguous", "tie");
     }
+
+    [Fact]
+    public void SystemPrompt_Describes_DataRetrieval_Tool()
+    {
+        // FR-014: system prompt must describe the query_expense_data tool
+        var prompt = AgentInvestigator.SystemPromptText;
+        prompt.Should().Contain("query_expense_data");
+        prompt.Should().Contain("AVAILABLE TOOLS");
+        prompt.Should().Contain("TOOL USAGE GUIDANCE");
+    }
+
+    [Fact]
+    public void SystemPrompt_Describes_CodeInterpreter_Tool()
+    {
+        // FR-014: system prompt must describe the code_interpreter tool
+        var prompt = AgentInvestigator.SystemPromptText;
+        prompt.Should().Contain("code_interpreter");
+        prompt.Should().Contain("Python");
+    }
+
+    [Fact]
+    public void SystemPrompt_Encourages_Tool_Use()
+    {
+        // FR-015: system prompt must encourage tool use
+        var prompt = AgentInvestigator.SystemPromptText;
+        prompt.Should().Contain("ALWAYS use");
+        prompt.Should().Contain("USE THEM");
+    }
 }

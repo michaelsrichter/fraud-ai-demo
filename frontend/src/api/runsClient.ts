@@ -71,6 +71,17 @@ export const EmployeeSchema = z.object({
 });
 export type Employee = z.infer<typeof EmployeeSchema>;
 
+export const ToolInvocationSchema = z.object({
+  toolName: z.string(),
+  parameters: z.string(),
+  responseSummary: z.string(),
+  responseData: z.string().nullable().optional(),
+  reasoning: z.string().nullable().optional(),
+  latencyMs: z.number(),
+  succeeded: z.boolean(),
+});
+export type ToolInvocation = z.infer<typeof ToolInvocationSchema>;
+
 export const AiInvestigationResultSchema = z.object({
   recordId: z.string(),
   runId: z.string(),
@@ -82,6 +93,7 @@ export const AiInvestigationResultSchema = z.object({
   keySignals: z.array(z.string()).nullable().optional(),
   recommendedAction: z.string().nullable().optional(),
   unavailableReason: z.string().nullable().optional(),
+  toolTrace: z.array(ToolInvocationSchema).nullable().optional(),
 });
 export type AiInvestigationResult = z.infer<typeof AiInvestigationResultSchema>;
 
@@ -200,6 +212,7 @@ export interface ConsensusResult {
     keySignals: string[] | null;
     recommendedAction: string | null;
     unavailableReason: string | null;
+    toolTrace: ToolInvocation[] | null;
   }>;
   arbiter: ConsensusArbiter | null;
 }

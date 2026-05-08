@@ -24,7 +24,8 @@ namespace FraudDemo.Infrastructure.Ai;
 /// </summary>
 public sealed class AgentInvestigator : IAiInvestigator
 {
-    private static readonly TimeSpan TimeoutBudget = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultTimeoutBudget = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ToolAugmentedTimeoutBudget = TimeSpan.FromSeconds(60);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -78,6 +79,35 @@ public sealed class AgentInvestigator : IAiInvestigator
         - categoryDeviation: 1.0 if category is atypical for this employee.
         - weekendSubmission: 1.0 if submitted on weekend.
 
+        AVAILABLE TOOLS:
+        You have access to the following tools. USE THEM to strengthen your analysis.
+        Do NOT skip tool use — the data retrieval tool is fast and gives you much
+        richer context than what appears in this initial prompt.
+
+        1. query_expense_data — Query filtered expense data from the run dataset.
+           Use this to examine broader patterns: all expenses from the same vendor,
+           the employee's full history, expenses in a specific category, etc.
+           Parameters: employeeId, vendor, category, band (High/Medium/Low),
+           dateRangeStart, dateRangeEnd, minAmount, maxAmount,
+           limit (default 100, max 500), detail (default false).
+           - Use detail=false first to get a compact summary with aggregates,
+             then detail=true if you need specific records.
+
+        2. code_interpreter — Execute Python code for complex analysis.
+           Use this for statistical tests, temporal pattern analysis, Benford's law,
+           distribution comparisons, or any quantitative analysis that would
+           strengthen your investigation.
+
+        TOOL USAGE GUIDANCE:
+        - ALWAYS use query_expense_data to examine the vendor's history across the
+          full dataset — is this vendor used by other employees? How many times?
+        - ALWAYS use query_expense_data to look at the employee's full expense
+          history — are there patterns of threshold gaming or weekend submissions?
+        - Use code_interpreter when you need to compute statistics, run comparisons,
+          or detect temporal patterns that can't be expressed in natural language.
+        - You may call tools multiple times with different parameters.
+        - Start with compact summaries (detail=false), then drill into details.
+
         Your reply MUST be a single JSON object — no prose, no markdown fences — matching:
         {
           "verdict": "Likely" | "Unlikely" | "Inconclusive",
@@ -90,13 +120,25 @@ public sealed class AgentInvestigator : IAiInvestigator
         """;
 
     private readonly FoundryOptions _foundry;
+    private readonly AgentToolOptions _agentToolOptions;
     private readonly TokenCredential _credential;
+    private readonly IRunDataQueryService _queryService;
+    private readonly IFoundryToolboxClient? _toolboxClient;
     private readonly ILogger<AgentInvestigator> _logger;
 
-    public AgentInvestigator(IOptions<FoundryOptions> foundry, TokenCredential credential, ILogger<AgentInvestigator> logger)
+    public AgentInvestigator(
+        IOptions<FoundryOptions> foundry,
+        IOptions<AgentToolOptions> agentToolOptions,
+        TokenCredential credential,
+        IRunDataQueryService queryService,
+        ILogger<AgentInvestigator> logger,
+        IFoundryToolboxClient? toolboxClient = null)
     {
         _foundry = foundry.Value;
+        _agentToolOptions = agentToolOptions.Value;
         _credential = credential;
+        _queryService = queryService;
+        _toolboxClient = toolboxClient;
         _logger = logger;
     }
 
@@ -114,7 +156,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(TimeoutBudget);
+        cts.CancelAfter(ToolAugmentedTimeoutBudget);
         var sw = Stopwatch.StartNew();
 
         try
@@ -122,20 +164,108 @@ public sealed class AgentInvestigator : IAiInvestigator
             var azureClient = new AzureOpenAIClient(new Uri(_foundry.Endpoint), _credential);
             ChatClient chat = azureClient.GetChatClient(deploymentName);
             IChatClient chatClient = chat.AsIChatClient();
-            var chatOptions = new ChatOptions();
+
+            // Build tool list (FR-010, FR-011)
+            var tools = new List<AITool>();
+            var toolInvocations = new List<ToolInvocation>();
+            var callCounter = 0;
+            var maxCalls = _agentToolOptions.MaxToolCalls;
+
+            // Data retrieval tool — in-process, Run captured in closure (plan R1)
+            tools.Add(AIFunctionFactory.Create(
+                (string? employeeId, string? vendor, string? category, string? band,
+                 string? dateRangeStart, string? dateRangeEnd,
+                 decimal? minAmount, decimal? maxAmount,
+                 int? limit, bool? detail) =>
+                {
+                    var toolSw = Stopwatch.StartNew();
+                    try
+                    {
+                        if (Interlocked.Increment(ref callCounter) > maxCalls)
+                        {
+                            var maxMsg = $"Maximum tool calls ({maxCalls}) reached. Please finalize your verdict.";
+                            toolInvocations.Add(new ToolInvocation("query_expense_data", "{}", maxMsg, null, null, toolSw.ElapsedMilliseconds, false));
+                            _logger.LogWarning("Tool call limit reached: {Max}", maxCalls);
+                            return maxMsg;
+                        }
+
+                        var query = new RunDataQuery(
+                            EmployeeId: employeeId is not null && Guid.TryParse(employeeId, out var eid) ? eid : null,
+                            Vendor: vendor,
+                            Category: category,
+                            Band: band is not null && Enum.TryParse<Domain.Enums.ConfidenceBand>(band, true, out var b) ? b : null,
+                            DateRangeStart: dateRangeStart is not null ? DateTimeOffset.Parse(dateRangeStart) : null,
+                            DateRangeEnd: dateRangeEnd is not null ? DateTimeOffset.Parse(dateRangeEnd) : null,
+                            MinAmount: minAmount,
+                            MaxAmount: maxAmount,
+                            Limit: limit ?? 100,
+                            Detail: detail ?? false);
+
+                        var paramsJson = JsonSerializer.Serialize(query, JsonOptions);
+                        var result = _queryService.Query(run, query);
+                        var resultJson = JsonSerializer.Serialize(result, JsonOptions);
+                        var summary = $"{result.Metadata.TotalMatches} matches, {result.Metadata.ReturnedCount} returned ({result.Metadata.Mode} mode)";
+                        var truncatedData = resultJson.Length > 1000 ? resultJson[..1000] + "..." : resultJson;
+
+                        toolSw.Stop();
+                        toolInvocations.Add(new ToolInvocation("query_expense_data", paramsJson, summary, truncatedData, null, toolSw.ElapsedMilliseconds, true));
+                        _logger.LogInformation("Tool query_expense_data: {Summary} in {Ms}ms", summary, toolSw.ElapsedMilliseconds);
+                        return resultJson;
+                    }
+                    catch (Exception ex)
+                    {
+                        toolSw.Stop();
+                        var errMsg = $"Error: {ex.Message}";
+                        toolInvocations.Add(new ToolInvocation("query_expense_data", "{}", errMsg, null, null, toolSw.ElapsedMilliseconds, false));
+                        _logger.LogWarning(ex, "Tool query_expense_data failed in {Ms}ms", toolSw.ElapsedMilliseconds);
+                        return errMsg;
+                    }
+                },
+                "query_expense_data",
+                "Query filtered expense data from the run dataset. Use this to examine vendor history, employee patterns, category breakdowns, etc. Parameters: employeeId, vendor, category, band (High/Medium/Low), dateRangeStart, dateRangeEnd, minAmount, maxAmount, limit (default 100, max 500), detail (default false for compact summary, true for full records)."));
+
+            // Code Interpreter tools from MCP toolbox (FR-007, FR-009)
+            if (_toolboxClient is not null)
+            {
+                try
+                {
+                    var mcpTools = await _toolboxClient.GetToolsAsync(cts.Token);
+                    if (mcpTools is not null)
+                    {
+                        tools.AddRange(mcpTools);
+                        _logger.LogInformation("Loaded {Count} MCP tools from Foundry Toolbox", mcpTools.Count);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Foundry Toolbox returned no tools — proceeding with data retrieval only");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load Foundry Toolbox tools — proceeding with data retrieval only");
+                }
+            }
+
+            var chatOptions = new ChatOptions { ToolMode = ChatToolMode.Auto, Tools = new List<AITool>(tools) };
             if (temperature.HasValue)
             {
                 chatOptions.Temperature = temperature.Value;
             }
-            var agent = new ChatClientAgent(chatClient, instructions: SystemPrompt);
+
+            // Wrap the chat client with tool-aware options using ChatClientBuilder
+            var toolAwareChatClient = new ChatClientBuilder(chatClient)
+                .UseFunctionInvocation()
+                .Build();
+
+            var agent = new ChatClientAgent(toolAwareChatClient, instructions: SystemPrompt);
 
             var prompt = BuildPrompt(run, caseUnderReview);
-            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} model={Model} temp={Temp} promptLen={Len}",
-                run.RunId, caseUnderReview.Expense.RecordId, deploymentName, temperature, prompt.Length);
+            _logger.LogInformation("Investigation submitted: run={RunId} case={CaseId} model={Model} temp={Temp} promptLen={Len} tools={ToolCount}",
+                run.RunId, caseUnderReview.Expense.RecordId, deploymentName, temperature, prompt.Length, tools.Count);
 
-            var response = await agent.RunAsync(prompt, cancellationToken: cts.Token);
+            var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions { ChatOptions = chatOptions }, cancellationToken: cts.Token);
             sw.Stop();
-            _logger.LogInformation("Investigation succeeded in {Ms} ms", sw.ElapsedMilliseconds);
+            _logger.LogInformation("Investigation succeeded in {Ms} ms with {ToolCalls} tool calls", sw.ElapsedMilliseconds, toolInvocations.Count);
 
             var json = ExtractJsonObject(response.Text);
             var dto = JsonSerializer.Deserialize<AiVerdictDto>(json, JsonOptions);
@@ -152,7 +282,8 @@ public sealed class AgentInvestigator : IAiInvestigator
                 verdict: dto.Verdict,
                 rationale: dto.Rationale,
                 keySignals: dto.KeySignals,
-                recommendedAction: dto.RecommendedAction);
+                recommendedAction: dto.RecommendedAction,
+                toolTrace: toolInvocations.Count > 0 ? toolInvocations : null);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {

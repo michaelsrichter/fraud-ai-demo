@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AiInvestigationResult, ConsensusResult } from "../api/runsClient";
 import { AVAILABLE_MODELS, getPromptPreview, consensusInvestigate } from "../api/runsClient";
+import { ToolTracePanel } from "./ToolTracePanel";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
@@ -155,6 +156,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
           <p style={{ fontSize: "0.85rem" }}>
             <strong>Recommended action:</strong> {investigation.recommendedAction}
           </p>
+          <ToolTracePanel trace={investigation.toolTrace} />
         </div>
       )}
 
@@ -216,6 +218,7 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
                 {m.unavailableReason && (
                   <p className="muted" style={{ fontSize: "0.7rem" }}>Reason: {m.unavailableReason}</p>
                 )}
+                <ToolTracePanel trace={m.toolTrace} />
               </div>
             ))}
           </div>
