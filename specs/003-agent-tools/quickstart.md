@@ -50,3 +50,62 @@ curl -X POST http://localhost:7071/api/runs/{runId}/tools/expenses/query \
   -H "Content-Type: application/json" \
   -d '{"vendor": "OffshoreLLC", "detail": false}'
 ```
+
+## Streaming Investigation Endpoint (SSE)
+
+```
+POST /api/runs/{runId}/cases/{caseId}/investigate/stream
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+Body (same as the non-streaming endpoint):
+```json
+{
+  "modelDeploymentName": "gpt-5.4",
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+Test with `curl`:
+```bash
+curl -N -X POST http://localhost:7071/api/runs/{runId}/cases/{caseId}/investigate/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"modelDeploymentName": "gpt-5.4"}'
+```
+
+The `-N` flag disables output buffering so you see events as they arrive.
+
+### Event format
+
+```
+event: tool_call
+data: {"toolName":"query_expense_data","parameters":"...","responseSummary":"47 matches","latencyMs":312,"succeeded":true}
+
+event: tool_call
+data: {"toolName":"code_interpreter_0","parameters":"...","responseSummary":"Output: 15 lines","latencyMs":4200,"succeeded":true}
+
+event: complete
+data: {"recordId":"...","status":"Succeeded","verdict":"Likely","rationale":"...","toolTrace":[...]}
+```
+
+### Frontend usage
+
+The frontend uses `fetch` + `ReadableStream` (not `EventSource`, which only
+supports GET). The `streamInvestigation()` helper in `runsClient.ts` provides
+callbacks for `onToolCall`, `onComplete`, and `onError`.
+
+## Verifying Tool Use
+
+1. Generate a Run with default settings (5,000 records, 15% intensity)
+2. Navigate to a **Medium** band case (these have ambiguous signals)
+3. Click "Investigate with AI"
+4. Watch the tool trace panel update in real time:
+   - First: `query_expense_data` calls (vendor history, employee history)
+   - Then: `code_interpreter` if the agent decides quantitative analysis helps
+5. Final verdict appears with the complete rationale citing tool results
+
+If the Code Interpreter is not provisioned, the agent will only use the data
+retrieval tool — this is expected behavior (FR-009).

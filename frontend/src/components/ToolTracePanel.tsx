@@ -3,12 +3,30 @@ import type { ToolInvocation } from "../api/runsClient";
 
 interface Props {
   trace: ToolInvocation[] | null | undefined;
+  isStreaming?: boolean;
 }
 
-export function ToolTracePanel({ trace }: Props) {
+export function ToolTracePanel({ trace, isStreaming }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!trace || trace.length === 0) return null;
+  // Auto-expand when streaming
+  const effectiveOpen = isStreaming || isOpen;
+
+  if (!trace || trace.length === 0) {
+    if (isStreaming) {
+      return (
+        <div style={{ marginTop: 12 }}>
+          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text)" }}>
+            Agent Reasoning Trace
+          </span>
+          <div style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            <span className="streaming-pulse">Waiting for tool calls…</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -22,13 +40,18 @@ export function ToolTracePanel({ trace }: Props) {
         <span className="badge badge-low" style={{ fontSize: "0.6rem" }}>
           {trace.length} tool call{trace.length !== 1 ? "s" : ""}
         </span>
-        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{isOpen ? "▾" : "▸"}</span>
+        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{effectiveOpen ? "▾" : "▸"}</span>
       </div>
-      {isOpen && (
+      {effectiveOpen && (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
           {trace.map((inv, i) => (
             <ToolInvocationCard key={i} invocation={inv} index={i} />
           ))}
+          {isStreaming && (
+            <div style={{ padding: 8, fontSize: "0.78rem", color: "var(--text-muted)", textAlign: "center" }}>
+              <span className="streaming-pulse">Agent is reasoning…</span>
+            </div>
+          )}
         </div>
       )}
     </div>

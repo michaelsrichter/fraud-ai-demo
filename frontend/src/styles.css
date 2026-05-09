@@ -145,6 +145,15 @@ ul.signals li { margin: 2px 0; }
   animation: pulse-dot 1.2s ease-in-out infinite;
 }
 
+.streaming-pulse {
+  animation: streaming-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes streaming-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 /* ── Run detail sub-header ── */
 .run-subheader {
   display: flex;

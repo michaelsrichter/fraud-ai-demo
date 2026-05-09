@@ -31,4 +31,34 @@ describe("ToolTracePanel", () => {
     render(<ToolTracePanel trace={trace} />);
     expect(screen.getByText("2 tool calls")).toBeInTheDocument();
   });
+
+  it("shows pulsing indicator when isStreaming is true", () => {
+    const trace: ToolInvocation[] = [
+      { toolName: "query_expense_data", parameters: '{}', responseSummary: "3 records", responseData: null, reasoning: null, latencyMs: 80, succeeded: true },
+    ];
+    render(<ToolTracePanel trace={trace} isStreaming={true} />);
+    expect(screen.getByText("Agent is reasoning…")).toBeInTheDocument();
+  });
+
+  it("auto-expands when streaming", () => {
+    const trace: ToolInvocation[] = [
+      { toolName: "query_expense_data", parameters: '{}', responseSummary: "3 records", responseData: null, reasoning: null, latencyMs: 80, succeeded: true },
+    ];
+    render(<ToolTracePanel trace={trace} isStreaming={true} />);
+    // The tool invocation card content should be visible (auto-expanded)
+    expect(screen.getByText("3 records")).toBeInTheDocument();
+  });
+
+  it("shows waiting message when streaming with empty trace", () => {
+    render(<ToolTracePanel trace={[]} isStreaming={true} />);
+    expect(screen.getByText("Waiting for tool calls…")).toBeInTheDocument();
+  });
+
+  it("does not show pulsing indicator when isStreaming is false", () => {
+    const trace: ToolInvocation[] = [
+      { toolName: "query_expense_data", parameters: '{}', responseSummary: "3 records", responseData: null, reasoning: null, latencyMs: 80, succeeded: true },
+    ];
+    render(<ToolTracePanel trace={trace} isStreaming={false} />);
+    expect(screen.queryByText("Agent is reasoning…")).not.toBeInTheDocument();
+  });
 });

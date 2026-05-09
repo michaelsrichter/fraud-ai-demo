@@ -5,173 +5,102 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 # Tasks: AI Agent Tools for Fraud Investigation
 
 **Feature directory**: `specs/003-agent-tools/`
-**Inputs**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md), [data-model.md](./data-model.md), [quickstart.md](./quickstart.md)
+**Inputs**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md), [data-model.md](./data-model.md), [quickstart.md](./quickstart.md), [contracts/sse-events.md](./contracts/sse-events.md)
 
 **Tests**: Included. Constitution Principle VI mandates unit tests for all backend logic.
 
 **Organization**: Tasks grouped by user story for independent implementation and testing.
 
+**Context**: The majority of tool infrastructure (data retrieval, Code Interpreter, tool registration, system prompts, ToolTracePanel UI, Foundry Bicep) was completed in prior iterations. All original Phase 1–8 tasks (T001–T048) are done. The remaining work centers on **SSE streaming** for real-time tool trace delivery (FR-017/FR-018 clarification) and the standalone data query HTTP endpoint (FR-003).
+
 ## Format: `- [ ] [TaskID] [P?] [Story?] Description`
 
 - **[P]**: Parallelizable — touches different files, no incomplete dependencies
 - **[Story]**: `[US1]` … `[US4]` — only on user-story-phase tasks
-- Every implementation task names an exact file path
+- Include exact file paths in descriptions
 
 ## Path conventions (from plan.md)
 
 - Backend: `backend/src/{Domain,Application,Infrastructure,Functions}/`, tests in `backend/tests/unit/`
 - Frontend: `frontend/src/`, tests in `frontend/tests/`
-- IaC: `infra/modules/`
 
 ---
 
-## Phase 1: Setup (new dependencies + configuration)
+## Completed phases (T001–T048)
 
-**Purpose**: Add new NuGet packages, app settings, and configuration classes needed for tools.
-
-- [X] T001 Add NuGet package `ModelContextProtocol` (C# MCP SDK, GA) to `backend/src/Infrastructure/Infrastructure.csproj`
-- [X] T002 [P] Add new app settings to `backend/src/Functions/local.settings.json` and `local.settings.template.json`: `Foundry__ProjectEndpoint`, `Foundry__ToolboxName` (default `fraud-ai-tools`), `Foundry__ToolboxVersion` (default `1`), `Agent__MaxToolCalls` (default `10`), `Agent__ToolTimeoutSeconds` (default `60`)
-- [X] T003 [P] Extend `backend/src/Application/Configuration/Options.cs` — add `FoundryToolboxOptions` class with `ProjectEndpoint`, `ToolboxName`, `ToolboxVersion` properties; add `AgentToolOptions` class with `MaxToolCalls`, `ToolTimeoutSeconds` properties
-- [X] T004 [P] Register `IOptions<FoundryToolboxOptions>` and `IOptions<AgentToolOptions>` in `backend/src/Functions/Program.cs` DI, bound from configuration sections `Foundry` and `Agent`
-
----
-
-## Phase 2: Foundational (domain + DTO types)
-
-**Purpose**: Create the new domain entities and DTOs that all user stories depend on.
-
-**⚠️ CRITICAL**: No `[US*]` task may start until Phase 2 is complete.
-
-- [X] T005 [P] Create `backend/src/Domain/Entities/ToolInvocation.cs` — immutable record with fields: `ToolName` (string), `Parameters` (string), `ResponseSummary` (string), `ResponseData` (string?), `Reasoning` (string?), `LatencyMs` (long), `Succeeded` (bool); constructor validation per data-model.md
-- [X] T006 Modify `backend/src/Domain/Entities/AiInvestigationResult.cs` — add `IReadOnlyList<ToolInvocation>? ToolTrace` property; update constructor + factory methods `Succeeded()` / `Unavailable()` to accept optional `toolTrace` parameter (default null for backward compat)
-- [X] T007 [P] Create `backend/src/Application/Dtos/RunDataQueryDto.cs` — record with filter fields: `EmployeeId` (Guid?), `Vendor` (string?), `Category` (string?), `Band` (ConfidenceBand?), `DateRangeStart` (DateTimeOffset?), `DateRangeEnd` (DateTimeOffset?), `MinAmount` (decimal?), `MaxAmount` (decimal?), `Limit` (int, default 100), `Detail` (bool, default false); validation logic per data-model.md
-- [X] T008 [P] Create `backend/src/Application/Dtos/RunDataQueryResultDto.cs` — records for `RunDataQueryResult`, `QueryMetadata`, `QueryAggregates`, and `ExpenseQueryRecord` per data-model.md; `ExpenseQueryRecord` MUST NOT include `IsInjectedFraud` or `InjectedPattern` (FR-005)
-- [X] T009 [P] Create `backend/src/Application/Dtos/ToolInvocationDto.cs` — serialization DTO matching `ToolInvocation` for JSON responses to the frontend
-- [X] T010 [P] Create `backend/src/Application/Abstractions/IRunDataQueryService.cs` — interface: `RunDataQueryResult Query(Run run, RunDataQuery query)`
-- [X] T011 [P] Create `backend/src/Application/Abstractions/IFoundryToolboxClient.cs` — interface: `Task<IReadOnlyList<AITool>?> GetToolsAsync(CancellationToken ct)` + `Task CloseAsync()`
-- [X] T012 [P] Create `backend/tests/unit/Domain.Tests/ToolInvocationTests.cs` — validate constructor rejects empty ToolName, empty Parameters, negative LatencyMs
-- [X] T013 [P] Create `backend/tests/unit/Domain.Tests/AiInvestigationResultToolTraceTests.cs` — verify `Succeeded()` with ToolTrace serializes correctly; verify `Unavailable()` has null ToolTrace; verify backward compat with null ToolTrace
-
-**Checkpoint**: All types exist. User-story implementation can begin.
+All prior tasks from Phases 1–8 are complete:
+- ✅ Phase 1: Setup (T001–T004) — packages, config, DI
+- ✅ Phase 2: Foundational (T005–T013) — entities, DTOs, interfaces, tests
+- ✅ Phase 3: US1 Data Retrieval (T014–T023) — query service, tool registration, agent integration
+- ✅ Phase 4: US4 System Prompts (T024–T027) — investigator prompts, arbiter clean
+- ✅ Phase 5: US2 Code Interpreter (T028–T032) — Foundry Toolbox MCP, graceful degradation
+- ✅ Phase 6: US3 UI Tool Trace (T033–T038) — ToolTracePanel, post-completion rendering
+- ✅ Phase 7: Infrastructure (T039–T042) — Foundry Bicep, RBAC, docs
+- ✅ Phase 8: Polish (T043–T048) — docs, logging, consensus timeout
 
 ---
 
-## Phase 3: User Story 1 — Agent Retrieves Run Data (Priority: P1) 🎯
+## Phase 9: Foundational — SSE Streaming Infrastructure
 
-**Goal**: The investigator agent can call `query_expense_data` to filter and retrieve data from the Run blob. The tool is registered with the Agent Framework and the agent uses it autonomously.
+**Purpose**: Add the `IProgress<ToolInvocation>` callback mechanism and SSE writing utility that all streaming tasks depend on.
 
-**Independent Test**: Invoke investigate on a case; the tool trace shows data retrieval calls; the rationale references data from those calls.
+**⚠️ CRITICAL**: No Phase 10/11 task may start until Phase 9 is complete.
 
-**Maps to**: FR-001 → FR-006, SC-003.
+- [X] T049 Add `IProgress<ToolInvocation>?` parameter to `IAiInvestigator.InvestigateAsync` in `backend/src/Application/Abstractions/IAiInvestigator.cs` — optional parameter (default null) for streaming tool events to callers; update method signature to: `Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, bool allowConfidenceScores, CancellationToken cancellationToken, IProgress<ToolInvocation>? progress = null)`
+- [X] T050 Modify `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — update `InvestigateAsync` to accept and use `IProgress<ToolInvocation>? progress` parameter; inside each tool delegate (data retrieval and MCP tool wrappers), after adding to the `toolInvocations` list, call `progress?.Report(invocation)` to notify the caller of each tool event in real time (research R8)
+- [X] T051 [P] Create `backend/src/Functions/Endpoints/SseHelper.cs` — static helper with: `WriteSseEventAsync(Stream stream, string eventType, object data, JsonSerializerOptions options, CancellationToken ct)` that writes `event: {type}\ndata: {json}\n\n` and flushes; used by the SSE streaming endpoint (research R6)
+- [X] T052 [P] Create `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorProgressTests.cs` — verify that when `IProgress<ToolInvocation>` is provided, `Report()` is called for each tool invocation; verify that when `progress` is null, no error occurs (backward compat); use a mock investigator or test the delegate callback directly
 
-### Backend tests for US1
-
-- [X] T014 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` — given a fixture Run with 100 expenses, verify: (a) filter by vendor returns only matching records; (b) filter by employeeId returns correct subset; (c) filter by band returns correct band; (d) filter by date range works; (e) filter by amount range works; (f) compact mode returns aggregates + top-10 by score; (g) detail mode returns full records up to limit; (h) limit=500 max enforced; (i) empty filter matches all records; (j) `IsInjectedFraud` and `InjectedPattern` NEVER appear in output (FR-005)
-- [X] T015 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify compact mode aggregates: mean, median, min, max amounts are correct; distinct vendor/category/employee counts are correct
-- [X] T016 [P] [US1] In `backend/tests/unit/Application.Tests/RunDataQueryServiceTests.cs` (extend) — verify empty result set returns zero-count metadata and null aggregates/records gracefully
-
-### Backend implementation for US1
-
-- [X] T017 [US1] Implement `backend/src/Application/Services/RunDataQueryService.cs` (`IRunDataQueryService`) — pure filter + aggregation logic: accepts `(Run, RunDataQuery)`, applies all filters (AND logic), computes compact aggregates or returns detail records, strips `IsInjectedFraud`/`InjectedPattern`, respects `limit` cap at 500, sorts by confidence descending
-- [X] T018 [US1] Implement `backend/src/Functions/Endpoints/ExpenseDataQueryFunction.cs` — `POST /api/runs/{runId}/tools/expenses/query`; loads Run from `IRunRepository`, deserializes `RunDataQuery` from body, delegates to `IRunDataQueryService`, returns `RunDataQueryResult` JSON; returns 404 if run not found
-- [X] T019 [US1] Wire `IRunDataQueryService` → `RunDataQueryService` in `backend/src/Functions/Program.cs` DI
-
-### Agent integration for US1
-
-- [X] T020 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — create a private method `CreateDataRetrievalTool(Run run)` that returns an `AIFunction` wrapping `RunDataQueryService.Query()` with the Run captured in closure; the function accepts filter parameters as a JSON string, parses to `RunDataQuery`, calls the service, serializes the result, and includes a call counter enforcing `MaxToolCalls` (FR-013)
-- [X] T021 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) create the data retrieval tool via `CreateDataRetrievalTool(run)`, (b) pass it in `ChatOptions.Tools`, (c) set `ChatOptions.ToolMode = ChatToolMode.Auto`, (d) extend timeout to 60s when tools are present (FR-021)
-- [X] T022 [US1] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — after `agent.RunAsync()`, iterate `response.Messages` to build `IReadOnlyList<ToolInvocation>` capturing each tool call (name, parameters, response summary, latency, success), plus any intermediate assistant reasoning messages (FR-017); pass to `AiInvestigationResult.Succeeded()`; add `ILogger` structured logging for each tool invocation: tool name, parameters summary, latency, success/failure (FR-012)
-- [X] T023 [P] [US1] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` — verify `CreateDataRetrievalTool` returns correctly filtered results when called with test parameters; verify it strips ground-truth labels; verify call counter returns "max reached" message after configured limit
-
-**Checkpoint US1**: Data retrieval tool works in-process. Agent can query run data and tool trace is captured.
+**Checkpoint**: Streaming callback mechanism in place. SSE utility ready.
 
 ---
 
-## Phase 4: User Story 4 — System Prompts Updated (Priority: P1)
+## Phase 10: User Story 3 (streaming) — SSE Streaming Endpoint (Priority: P2)
 
-**Goal**: System prompts describe and encourage tool use for investigators; arbiter prompt has NO tool references.
+**Goal**: Add a new SSE endpoint that streams tool invocations in real time during a single-model investigation, then emits the final result. The frontend consumes this stream to show progressive tool trace updates.
 
-**Maps to**: FR-014 → FR-016.
+**Independent Test**: Invoke the `/investigate/stream` endpoint; `curl -N` shows `tool_call` events arriving as the agent uses tools, followed by a `complete` event with the full result.
 
-- [X] T024 [US4] Update the system prompt in `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — append the "AVAILABLE TOOLS" and "TOOL USAGE GUIDANCE" sections from plan.md §R4 after the FEATURE MEANINGS section and before the JSON output format
-- [X] T025 [US4] Verify the arbiter system prompt in `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` does NOT contain any tool descriptions or tool-usage encouragement (FR-016)
-- [X] T026 [P] [US4] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorTests.cs` — verify system prompt contains "query_expense_data" and "code_interpreter" tool descriptions, "TOOL USAGE GUIDANCE" section, and "ALWAYS use" encouragement language (FR-014, FR-015)
-- [X] T027 [P] [US4] Add unit test verifying arbiter prompt does NOT contain "query_expense_data", "code_interpreter", or "TOOL USAGE" (FR-016)
+**Maps to**: FR-017 (streaming), FR-018 (progressive rendering), contracts/sse-events.md
 
-**Checkpoint US4**: Prompts guide tool use. Arbiter is clean.
+### Backend implementation
 
----
+- [X] T053 [US3] Create `backend/src/Functions/Endpoints/InvestigateCaseStreamFunction.cs` — new Azure Function with `POST /api/runs/{runId}/cases/{caseId}/investigate/stream` route; sets response headers `Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`; loads Run from `IRunRepository`, resolves case, creates `Progress<ToolInvocation>` that writes `tool_call` SSE events to the response stream via `SseHelper`; calls `InvestigateCaseHandler.HandleAsync` (passing the progress callback through to the investigator); persists the result **before** writing the `complete` SSE event (so the Run is saved even if the stream drops); on completion writes `complete` or `error` SSE event; handles 404 for run/case not found as JSON (not SSE). **Depends on T054** (handler must accept progress param first).
+- [X] T054 [US3] Modify `backend/src/Application/Services/InvestigateCaseHandler.cs` — add optional `IProgress<ToolInvocation>? progress = null` parameter to `HandleAsync`; pass it through to `_investigator.InvestigateAsync`
+- [X] T055 [P] [US3] Add Vite proxy rule for `/api/runs/*/investigate/stream` in `frontend/vite.config.ts` — ensure SSE streaming requests proxy correctly to `localhost:7071` (may already work with existing `/api` proxy rule; verify and add if needed)
 
-## Phase 5: User Story 2 — Code Interpreter via Foundry Toolbox (Priority: P2)
+### Backend tests
 
-**Goal**: The agent can invoke the Foundry Code Interpreter to execute Python code during an investigation. Connected via MCP.
-
-**Independent Test**: Investigation on an ambiguous case shows Code Interpreter usage in the tool trace with Python code + output.
-
-**Maps to**: FR-007 → FR-009, FR-010.
-
-### Backend implementation for US2
-
-- [X] T028 [US2] Implement `backend/src/Infrastructure/Ai/FoundryToolboxClient.cs` (`IFoundryToolboxClient`) — connects to the Foundry Toolbox MCP endpoint using `ModelContextProtocol` SDK; auth via `DefaultAzureCredential` with scope `https://ai.azure.com/.default` using a custom `DelegatingHandler` (bearer token injection); `GetToolsAsync()` returns MCP tools as `AITool[]`; `CloseAsync()` disconnects; graceful degradation: returns null on connection failure (FR-009) with warning log
-- [X] T029 [US2] Wire `IFoundryToolboxClient` → `FoundryToolboxClient` in `backend/src/Functions/Program.cs` DI as a singleton (connection reuse across investigations)
-- [X] T030 [US2] In `backend/src/Infrastructure/Ai/AgentInvestigator.cs` — modify `InvestigateAsync` to: (a) call `IFoundryToolboxClient.GetToolsAsync()` to get MCP tools, (b) add them to `ChatOptions.Tools` alongside the data retrieval tool, (c) if toolbox returns null, proceed with data retrieval only and log warning
-- [X] T031 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/FoundryToolboxClientTests.cs` — mock the MCP SDK to verify: (a) correct toolbox URL construction from config, (b) bearer token injection with correct scope, (c) graceful null return on connection failure, (d) tools are returned on success
-- [X] T032 [P] [US2] Add unit test in `backend/tests/unit/Infrastructure.Tests/AgentInvestigatorToolTests.cs` (extend) — verify that when toolbox returns null, agent still has data retrieval tool and investigation succeeds; verify that when toolbox returns tools, they appear in ChatOptions.Tools
-
-**Checkpoint US2**: Code Interpreter available via MCP. Graceful degradation if unavailable.
-
----
-
-## Phase 6: User Story 3 — UI Tool Trace Display (Priority: P2)
-
-**Goal**: The frontend displays tool invocations in a collapsible trace panel within the AI verdict. Each tool call shows name, parameters, response, and reasoning.
-
-**Independent Test**: After a tool-augmented investigation, the case detail shows the trace with expandable tool call cards.
-
-**Maps to**: FR-017 → FR-020, SC-005.
-
-### Frontend types & API
-
-- [X] T033 [US3] Update `frontend/src/api/runsClient.ts` — add `ToolInvocation` type with fields `toolName`, `parameters`, `responseSummary`, `responseData`, `reasoning`, `latencyMs`, `succeeded`; extend `AiInvestigationResult` type with optional `toolTrace: ToolInvocation[]`; extend `ConsensusModelResult` with optional `toolTrace: ToolInvocation[]`
+- [X] T056 [P] [US3] Create `backend/tests/unit/Application.Tests/InvestigateCaseHandlerStreamTests.cs` — verify that `HandleAsync` passes the `IProgress<ToolInvocation>` through to the mocked `IAiInvestigator`; verify that when progress is null, behavior is unchanged
+- [X] T057 [P] [US3] Create `backend/tests/unit/Application.Tests/SseHelperTests.cs` — verify `WriteSseEventAsync` produces correct SSE format: `event: {type}\ndata: {json}\n\n`; verify it flushes the stream; verify it handles special characters in JSON correctly
 
 ### Frontend implementation
 
-- [X] T034 [US3] Create `frontend/src/components/ToolTracePanel.tsx` — collapsible "Agent Reasoning Trace" section; renders each `ToolInvocation` as a card with: tool icon + name, collapsible parameters (JSON formatted), response summary (always visible), reasoning text (if present); for Code Interpreter: render submitted Python code in a `<pre>` code block, execution output with "show more" truncation at 500 chars (FR-020)
-- [X] T035 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — render `ToolTracePanel` inside the single-model result section after the rationale (when `toolTrace` is non-null/non-empty); show "No tools invoked" when trace is null/empty
-- [X] T036 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — in the consensus side-by-side grid, render `ToolTracePanel` inside each model's column panel (FR-019)
+- [X] T058 [US3] Add `streamInvestigation()` function in `frontend/src/api/runsClient.ts` — accepts `(runId, caseId, options, onToolCall, onComplete, onError)` callbacks plus an optional `AbortSignal` for cancellation; uses `fetch` with POST to `/api/runs/{runId}/cases/{caseId}/investigate/stream` passing the signal; reads response body via `getReader()` + `TextDecoder`; parses SSE frames by splitting on `\n\n` boundaries; dispatches `tool_call` events to `onToolCall(ToolInvocation)`, `complete` to `onComplete(AiInvestigationResult)`, `error` to `onError`; handles stream close without terminal event as timeout error; aborts cleanly when signal fires (research R7)
+- [X] T059 [US3] Modify `frontend/src/components/AiVerdictPanel.tsx` — replace the single-model `investigateCase()` call with `streamInvestigation()`; during streaming: accumulate `ToolInvocation[]` in state via `onToolCall` callback, show the `ToolTracePanel` with the growing trace array, show "Investigating..." status; on `onComplete`: set the full investigation result and stop the loading indicator; on `onError`: show error state; keep the non-streaming `investigateCase()` as fallback if the stream fails to connect
+- [X] T060 [US3] Modify `frontend/src/components/ToolTracePanel.tsx` — accept an optional `isStreaming` prop; when `isStreaming=true`, render a pulsing indicator at the bottom ("Agent is reasoning..."); auto-expand the trace section when streaming (don't require the user to click to open it during an active investigation)
+- [X] T061 [US3] Modify `frontend/src/components/InvestigationProgress.tsx` — when streaming is active, show the count of tool calls received so far (e.g., "🔍 3 tool calls...") instead of a generic spinner
 
 ### Frontend tests
 
-- [X] T037 [P] [US3] Create `frontend/tests/components/ToolTracePanel.test.tsx` — given a ToolInvocation with `query_expense_data`, renders tool name, parameters, response summary; given a Code Interpreter invocation, renders Python code block and output; given empty trace, renders "No tools invoked" or is absent
-- [X] T038 [P] [US3] Update `frontend/tests/components/AiVerdictPanel.test.tsx` — add test verifying ToolTracePanel renders when investigation has toolTrace; verify it does NOT render when toolTrace is null
+- [X] T062 [P] [US3] Create `frontend/tests/api/streamInvestigation.test.ts` — mock `fetch` returning a `ReadableStream` with SSE-formatted chunks; verify `onToolCall` fires for each `tool_call` event; verify `onComplete` fires with parsed `AiInvestigationResult` on `complete` event; verify `onError` fires on `error` event; verify stream close without terminal event triggers error
+- [X] T063 [P] [US3] Update `frontend/tests/components/ToolTracePanel.test.tsx` — add tests for `isStreaming` prop: verify pulsing indicator shown when `isStreaming=true`; verify auto-expanded when streaming; verify indicator hidden when `isStreaming=false`
+- [X] T064 [P] [US3] Update `frontend/tests/components/AiVerdictPanel.test.tsx` — add test verifying streaming flow: mock `streamInvestigation`, verify tool trace grows incrementally, verify final result replaces loading state
 
-**Checkpoint US3**: Tool trace visible in the UI for both single-model and consensus investigations.
-
----
-
-## Phase 7: Infrastructure — Foundry Project + Toolbox
-
-**Purpose**: Provision the Foundry infrastructure for the Code Interpreter toolbox.
-
-- [X] T039 Modify `infra/modules/foundry.bicep` — add Foundry AI Hub (`Microsoft.MachineLearningServices/workspaces` kind `Hub`) linked to the existing AI Services account; add Foundry Project linked to the Hub; output `projectEndpoint`
-- [X] T040 [P] Document toolbox creation steps in `docs/setup.md` — if the Foundry Toolbox cannot be provisioned in Bicep (requires portal), document the manual steps: create toolbox named `fraud-ai-tools` with Code Interpreter tool in the Foundry Project
-- [X] T041 Modify `infra/modules/functions.bicep` — add app settings `Foundry__ProjectEndpoint`, `Foundry__ToolboxName`, `Foundry__ToolboxVersion` wired from foundry module outputs
-- [X] T042 [P] Modify `infra/modules/rbac.bicep` — if the Foundry Hub/Project requires additional RBAC for the Function App MI or deploying user, add the necessary role assignments
+**Checkpoint**: SSE streaming endpoint works. Frontend shows progressive tool trace. Non-streaming path preserved as fallback.
 
 ---
 
-## Phase 8: Polish & Cross-Cutting
+## Phase 11: Polish & Cross-Cutting — Streaming
 
-**Purpose**: Documentation, logging, and final verification.
+**Purpose**: Documentation, configuration, and final verification for the streaming feature.
 
-- [X] T043 [P] Update `docs/api.md` — add documentation for `POST /api/runs/{runId}/tools/expenses/query` endpoint with request/response examples for both compact and detail modes
-- [X] T044 [P] Update `docs/components.md` — document `RunDataQueryService`, `FoundryToolboxClient`, `ToolTracePanel`, and the updated `AgentInvestigator` tool registration
-- [X] T045 [P] Update `docs/architecture.md` — add tool-calling flow to the data flow diagram: agent → data retrieval (in-process) → Code Interpreter (MCP → Foundry Toolbox)
-- [X] T046 [P] Verify `ILogger` structured logging in `AgentInvestigator` covers each tool invocation: tool name, parameters summary, latency, success/failure (FR-012) — logging is implemented in T022 but this task verifies completeness and adds any missing fields
-- [X] T047 Modify `backend/src/Functions/Endpoints/ConsensusCaseFunction.cs` — update timeout to 60s (FR-021); ensure per-model tool traces are included in the consensus response `models[].toolTrace`
-- [X] T048 Update `backend/src/Functions/Endpoints/PreviewPromptFunction.cs` — ensure the preview shows the updated system prompt with tool descriptions so presenters can see the AVAILABLE TOOLS section
+- [X] T065 [P] Update `docs/api.md` — add documentation for `POST /api/runs/{runId}/cases/{caseId}/investigate/stream` SSE endpoint with event format examples and client usage notes
+- [X] T066 [P] Update `docs/components.md` — document `SseHelper`, `InvestigateCaseStreamFunction`, and the updated `streamInvestigation()` frontend client
+- [X] T067 [P] Update `docs/architecture.md` — add SSE streaming flow to the investigation sequence diagram: client → SSE endpoint → AgentInvestigator (with IProgress callback) → tool_call events → complete event
+- [X] T068 Run `specs/003-agent-tools/quickstart.md` validation — verify the streaming `curl` command works against `func start` and produces SSE events; fix any endpoint URL or header issues
 
-**Checkpoint**: All tools working, UI displaying traces, docs updated, logging in place.
+**Checkpoint**: All streaming work complete, documented, and verified.
 
 ---
 
@@ -179,68 +108,62 @@ description: "Task list for AI Agent Tools for Fraud Investigation"
 
 ### Phase ordering
 
-- **Setup (Phase 1)** — no deps; start immediately
-- **Foundational (Phase 2)** — depends on Setup; blocks all `[US*]` tasks
-- **US1 (Phase 3)** — depends on Phase 2; data retrieval tool + agent integration
-- **US4 (Phase 4)** — depends on Phase 2; can run in parallel with US1
-- **US2 (Phase 5)** — depends on Phase 2 + US1 (needs tool registration pattern from T021); Code Interpreter
-- **US3 (Phase 6)** — depends on US1 (needs ToolTrace types); frontend trace display
-- **Infra (Phase 7)** — independent of backend; can run in parallel with any phase
-- **Polish (Phase 8)** — depends on US1–US4 being complete
+- **Phase 9 (Foundational — SSE)** — no deps on incomplete phases; start immediately
+- **Phase 10 (US3 Streaming)** — depends on Phase 9 completion
+- **Phase 11 (Polish)** — depends on Phase 10 completion
 
-### Story dependencies
+### Within Phase 10
 
-| Story | Hard deps | Soft deps |
-|---|---|---|
-| US1 (P1) | Phase 2 only | — |
-| US4 (P1) | Phase 2 only | US1 for testing prompt effectiveness |
-| US2 (P2) | Phase 2, US1 (tool registration pattern) | Infra (Phase 7) for deployed toolbox |
-| US3 (P2) | Phase 2, US1 (ToolTrace types in API) | US2 for Code Interpreter trace examples |
+| Task | Depends on |
+|---|---|
+| T053 (SSE endpoint) | T049, T050, T051, **T054** (Phase 9 + handler) |
+| T054 (Handler update) | T049 (interface change) |
+| T055 (Vite proxy) | None (can start immediately) |
+| T056, T057 (backend tests) | T051, T054 |
+| T058 (stream client) | T053 (needs endpoint to exist) |
+| T059 (AiVerdictPanel) | T058 (needs stream client) |
+| T060 (ToolTracePanel) | None (can start immediately) |
+| T061 (InvestigationProgress) | None (can start immediately) |
+| T062–T064 (frontend tests) | T058, T060 |
 
 ### Parallel opportunities
 
-- **Phase 1**: T001–T004 are all `[P]`
-- **Phase 2**: T005, T007–T013 are all `[P]` (T006 depends on T005 for ToolInvocation type)
-- **Phase 3 tests**: T014–T016, T023 are all `[P]`
-- **Phase 4**: T024–T027 — T026 and T027 are `[P]`
-- **Phase 5 tests**: T031, T032 are `[P]`
-- **Phase 6 tests**: T037, T038 are `[P]`
-- **Phase 7**: T039–T042 — T040, T042 are `[P]`
-- **Phase 8**: T043–T046 are all `[P]`
+- **Phase 9**: T051, T052 are `[P]` — can run parallel with T049/T050
+- **Phase 10 backend**: T055, T056, T057 are `[P]`
+- **Phase 10 frontend**: T060, T061 can run parallel (different files, no deps)
+- **Phase 10 frontend tests**: T062, T063, T064 are all `[P]`
+- **Phase 11**: T065, T066, T067 are all `[P]`
 
 ---
 
 ## Implementation strategy
 
-**MVP first**: Finish Phases 1, 2, 3, and 4. At that point:
-- The data retrieval tool works in-process
-- System prompts guide tool use
-- Agents autonomously query run data during investigations
-- Tool trace is captured and returned in the API response
+**Incremental delivery**:
+1. Phase 9 first — backend plumbing (IProgress callback + SseHelper)
+2. Phase 10 backend — SSE endpoint + handler wiring
+3. Phase 10 frontend — stream client → AiVerdictPanel → ToolTracePanel
+4. Phase 11 — docs and validation
 
-**Incremental delivery after MVP**:
-1. **Phase 6 (US3)** — frontend tool trace display (makes tools visible)
-2. **Phase 5 (US2)** — Code Interpreter via Foundry Toolbox (requires infra)
-3. **Phase 7** — infrastructure provisioning
-4. **Phase 8** — docs + polish
+**Fallback preserved**: The existing non-streaming `POST /api/runs/{runId}/cases/{caseId}/investigate` endpoint is untouched. If streaming fails in the frontend, it can fall back to the original request-response flow.
 
 ---
 
 ## Task counts
 
-- **Total tasks**: 48
-- **Setup (Phase 1)**: 4 (T001–T004)
-- **Foundational (Phase 2)**: 9 (T005–T013)
-- **US1 — Data Retrieval (Phase 3)**: 10 (T014–T023)
-- **US4 — System Prompts (Phase 4)**: 4 (T024–T027)
-- **US2 — Code Interpreter (Phase 5)**: 5 (T028–T032)
-- **US3 — UI Tool Trace (Phase 6)**: 6 (T033–T038)
-- **Infra (Phase 7)**: 4 (T039–T042)
-- **Polish (Phase 8)**: 6 (T043–T048)
+- **New tasks**: 20 (T049–T068)
+- **Phase 9 (Foundational SSE)**: 4 (T049–T052)
+- **Phase 10 (US3 Streaming)**: 12 (T053–T064)
+- **Phase 11 (Polish)**: 4 (T065–T068)
+- **Previously completed**: 48 (T001–T048)
+- **Grand total**: 68
 
 ## Independent test criteria
 
-- **US1**: Invoke investigate → tool trace shows `query_expense_data` calls → rationale references retrieved data
-- **US4**: Preview AI prompt → contains AVAILABLE TOOLS section; arbiter prompt → no tool references
-- **US2**: Invoke investigate → tool trace shows `code_interpreter` call with Python code + output
-- **US3**: Case detail UI → collapsible "Agent Reasoning Trace" with tool call cards
+- **Phase 9**: `IProgress<ToolInvocation>` callback fires during mock investigation; `SseHelper` produces valid SSE format
+- **Phase 10 (backend)**: `curl -N` to `/investigate/stream` shows `tool_call` + `complete` SSE events
+- **Phase 10 (frontend)**: Click "Investigate" in UI → tool trace panel updates progressively → final verdict appears
+- **Phase 11**: `quickstart.md` streaming curl command works end-to-end
+
+## Suggested MVP scope
+
+Phase 9 + Phase 10 backend tasks (T049–T057) deliver a working SSE endpoint. Phase 10 frontend tasks (T058–T064) make it visible in the UI. Phase 11 is documentation only.

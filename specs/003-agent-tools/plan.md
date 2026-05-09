@@ -5,318 +5,147 @@
 
 ## Summary
 
-Extend the existing AI fraud investigation agents with two tools:
+Give AI investigator agents two tools — (1) an in-process data retrieval tool
+that queries filtered slices of the Run from Azure Storage, and (2) Microsoft
+Foundry's Python Code Interpreter via MCP Toolbox — then update system prompts
+to explain and encourage tool use, and stream tool invocations to the frontend
+in real time via Server-Sent Events (SSE) so the UI can render the agent's
+reasoning process progressively during a tool-augmented investigation.
 
-1. **Run Data Retrieval Tool** — a lab-specific HTTP endpoint
-   (`/api/runs/{runId}/tools/expenses/query`) that loads the compressed Run
-   blob from Azure Storage, decompresses it, applies filters (employee, vendor,
-   category, band, date range, amount range), and returns either a compact
-   summary (default: aggregates + top-10 by anomaly score) or full filtered
-   records (via `detail=true`). Registered as a function-calling tool with the
-   Microsoft Agent Framework so the agent can invoke it autonomously.
-
-2. **Code Interpreter Tool** — Microsoft Foundry's Python Code Interpreter,
-   accessed via a **Foundry Toolbox** exposed as an MCP (Model Context Protocol)
-   endpoint. The C# agent connects to the toolbox using `MCPStreamableHTTPTool`
-   (ported from the Python reference pattern), which lets the model write and
-   execute Python code in a sandboxed environment for statistical analysis,
-   pattern detection, and data visualization.
-
-Both tools are registered with every investigator agent but NOT the arbiter.
-The system prompt is updated to describe tools and encourage their use. All
-tool invocations are captured in a structured `ToolTrace` returned to the
-frontend, which renders them in a collapsible "Agent Reasoning Trace" panel.
+The majority of the tool infrastructure (data retrieval tool, Code Interpreter
+via `FoundryToolboxClient`, tool registration, `ToolInvocation` entity,
+`ToolTracePanel` UI component) was built incrementally during spec 001
+implementation. This plan focuses on the **remaining gap**: real-time streaming
+of tool trace entries to the frontend during an investigation (FR-017/FR-018
+clarification), plus any hardening, configuration, and documentation required
+to satisfy the full spec.
 
 ## Technical Context
 
 **Language/Version**:
-- Backend: C# / .NET 9.0 (Azure Functions isolated worker) — same as spec 001
+- Backend: C# / .NET 10.0 (Azure Functions v4, isolated worker)
 - Frontend: TypeScript 5.x on React 18 with Vite 5
+- IaC: Bicep (Microsoft.CognitiveServices, Microsoft.Network, Microsoft.Web, Microsoft.Storage providers)
 
-**Primary Dependencies** (new for this feature):
-- Backend: `Microsoft.Agents.AI.Tools` (GA — function-calling tool registration),
-  `ModelContextProtocol` (C# MCP SDK for Foundry toolbox connection),
-  existing `Azure.Storage.Blobs` for Run data retrieval
-- Frontend: no new deps — uses existing React components + recharts
+**Primary Dependencies**:
+- Backend (existing): `Microsoft.Azure.Functions.Worker`, `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore`, `Microsoft.Agents.AI` (GA Agent Framework), `Azure.Identity`, `Azure.Storage.Blobs`, `Azure.Data.Tables`, `Microsoft.ML`, `ModelContextProtocol` (MCP client for Foundry Toolbox), `System.Text.Json`
+- Backend (new for SSE): No new packages — Azure Functions HTTP response streaming uses built-in `HttpResponseData` with chunked transfer encoding
+- Frontend (existing): `react`, `react-dom`, `react-router-dom`, `@tanstack/react-query`, `zod`, `recharts`
+- Frontend (new for SSE): `fetch` + `ReadableStream` for SSE consumption — no new packages required
 
-**Existing Dependencies** (unchanged):
-- `Microsoft.Agents.AI`, `Microsoft.Agents.AI.OpenAI`, `Azure.Identity`,
-  `Azure.Storage.Blobs`, `Azure.Data.Tables`, `Microsoft.ML`
-
-**Storage**: No new storage resources. Data retrieval tool reads from the
-existing `runs/` blob container.
+**Storage**: Azure Blob Storage (`runs/` container, gzip JSON) + Azure Table Storage (`RunIndex`). No new storage resources needed — the data retrieval tool reads from the existing Run blob.
 
 **Testing**:
-- Backend: `xunit` + `Moq` + `FluentAssertions` (same pattern)
-- Frontend: `vitest` + `@testing-library/react`
+- Backend: `xunit` + `Moq` + `FluentAssertions` via `dotnet test`
+- Frontend: `vitest` + `@testing-library/react` via `npm test`
 
-**Target Platform**: Same as spec 001 — Azure Functions Flex Consumption +
-Azure Static Web Apps + Microsoft Foundry AI Services
+**Target Platform**: Azure Functions Flex Consumption (Linux, .NET 10) + Azure Static Web Apps + Microsoft Foundry AI Services
 
-**Project Type**: Extension to existing web application
+**Project Type**: Web application (frontend + backend) — incremental feature on existing codebase
 
 **Performance Goals**:
-- Data retrieval tool: < 2s for 500 records from a 5,000-record Run (SC-003)
-- Full tool-augmented investigation: ≤ 60s (FR-021, extended from 30s)
-- Individual tool call: < 5s target, 15s hard cap
+- Data retrieval tool: < 2s for filters matching up to 500 records from a 5,000-record Run (SC-003)
+- Individual tool call: target < 5s, hard cap 15s (FR-021)
+- Full tool-augmented investigation: < 60s (FR-021, SC-004)
+- SSE first-byte: < 500ms after investigation request — the stream opens immediately and tool trace events arrive as they occur
 
 **Constraints**:
-- Managed Identity + RBAC only (Constitution IV)
-- GA Agent Framework only (Constitution III) — MCP toolbox is GA in Foundry
-- No ground-truth labels in tool responses (FR-005)
-- Arbiter agent: NO tools (FR-011, FR-016)
-- Max 10 tool calls per investigation (FR-013)
+- Max 10 tool calls per investigation (FR-013, configurable via `Agent__MaxToolCalls`)
+- Individual tool timeout 15s hard cap (FR-021)
+- Overall investigation timeout 60s for tool-augmented mode (FR-021)
+- Never expose `IsInjectedFraud` or `InjectedPattern` in tool responses (FR-005)
+- Arbiter agent MUST NOT have tools (FR-011, FR-016)
+- Code Interpreter unavailability must not block investigations (FR-009)
+
+**Scale/Scope**: Single concurrent presenter; existing Run sizes (1,000–50,000 records); tool calls add 2–8 additional HTTP round-trips per investigation
 
 ## Constitution Check
 
+*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+
+Each row is evaluated against the project [Constitution v1.1.0](../../.specify/memory/constitution.md).
+
 | # | Principle | Status | How this plan satisfies it |
 |---|---|---|---|
-| I | Platform & Deployment | **PASS** | New endpoint is an Azure Function; Foundry Toolbox provisioned in Bicep |
-| II | Source Control & CI/CD | **PASS** | Same CI pipeline; new tests added |
-| III | AI & Agent Framework | **PASS** | Tool registration via GA `Microsoft.Agents.AI`; Code Interpreter via Foundry Toolbox MCP (GA); no preview SDKs |
-| IV | Security & Identity | **PASS** | Data retrieval uses existing `DefaultAzureCredential`; Toolbox auth uses bearer token from `DefaultAzureCredential` with `https://ai.azure.com/.default` scope |
-| V | Code Quality & Architecture | **PASS** | Data retrieval behind `IRunDataQueryService` interface; tool registration in `AgentInvestigator`; clean separation |
-| VI | Testing | **PASS** | Unit tests for data query service, tool registration, tool trace capture |
-| VII | Documentation | **PASS** | Updated docs for new endpoint, tool architecture |
-| VIII | Observability & Reliability | **PASS** | Tool invocations logged with latency/status; graceful degradation if Code Interpreter unavailable (FR-009) |
-| IX | Configuration | **PASS** | Toolbox URL, max tool calls configurable via app settings |
-| X | Performance | **PASS** | 60s timeout; compact summaries for context budget; < 2s data retrieval |
-| XI | Dev Experience | **PASS** | Toolbox testable locally via `az login` credential |
-| XII | Library-First | **PASS** | MCP SDK for toolbox; no custom protocol implementation |
+| I | Platform & Deployment | **PASS** | No new Azure resource types. SSE streaming uses existing Functions HTTP binding. Foundry Toolbox infrastructure already in `foundry.bicep`. |
+| II | Source Control & CI/CD | **PASS** | No CI/CD changes needed — existing GitHub Actions workflow builds and tests all projects. |
+| III | AI & Agent Framework | **PASS** | Uses `Microsoft.Agents.AI` (GA) with `ChatClientAgent` + `AIFunctionFactory`. Code Interpreter accessed via MCP Toolbox (GA). No preview SDKs. No Azure OpenAI resources. |
+| IV | Security & Identity | **PASS** | Data retrieval tool runs in-process with same Managed Identity as the Functions app. Foundry Toolbox auth uses `DefaultAzureCredential` with bearer token. No new secrets. |
+| V | Code Quality & Architecture | **PASS** | Tool services behind `IRunDataQueryService` and `IFoundryToolboxClient` interfaces. SSE streaming endpoint follows same layered pattern (Functions → Application → Infrastructure). |
+| VI | Testing Requirements | **PASS** | Existing unit tests cover `RunDataQueryService`, `ToolInvocation` entity, `AgentInvestigator` (mocked). New SSE endpoint tests will verify streaming behavior with mocked investigator. |
+| VII | Documentation | **PASS** | Tool usage documented in system prompts. SSE streaming contract in `contracts/`. Setup docs updated for any Foundry Toolbox provisioning steps. |
+| VIII | Observability & Reliability | **PASS** | Every tool invocation already logged with name, latency, success/failure. SSE endpoint degrades gracefully — if streaming fails, client falls back to polling the final result. Code Interpreter unavailability handled per FR-009. |
+| IX | Configuration & Flexibility | **PASS** | `Agent__MaxToolCalls`, `Agent__ToolTimeoutSeconds`, `Detection__DefaultLowThreshold`, `Detection__DefaultHighThreshold` already configurable via app settings. |
+| X | Performance Expectations | **PASS** | Data retrieval tool operates on in-memory Run data — sub-second for typical queries. SSE adds negligible overhead (chunked HTTP). 60s timeout accommodates multiple tool calls. |
+| XI | Development Experience | **PASS** | Local dev unchanged — `func start` + `npm run dev` + Azurite. SSE works with Vite proxy. |
+| XII | Library-First Algorithms | **PASS** | No new algorithmic work — data retrieval is filter/aggregate over in-memory collections. |
 
 **Result**: PASS — no Complexity Tracking entries required.
 
 ## Project Structure
 
-### New/Modified Files
+### Documentation (this feature)
 
 ```text
-backend/src/
-├── Application/
-│   ├── Abstractions/
-│   │   └── IRunDataQueryService.cs          # NEW — interface for data retrieval tool
-│   ├── Dtos/
-│   │   ├── RunDataQueryDto.cs               # NEW — filter parameters
-│   │   ├── RunDataQueryResultDto.cs         # NEW — tool response (compact + detail)
-│   │   └── ToolInvocationDto.cs             # NEW — tool trace entry
-│   └── Services/
-│       └── RunDataQueryService.cs           # NEW — filter/aggregate logic
-├── Domain/
-│   └── Entities/
-│       └── AiInvestigationResult.cs         # MODIFIED — add ToolTrace field
-├── Infrastructure/
-│   └── Ai/
-│       ├── AgentInvestigator.cs             # MODIFIED — register tools, capture trace, 60s timeout
-│       └── FoundryToolboxClient.cs          # NEW — MCP client for Foundry Toolbox
-├── Functions/
-│   └── Endpoints/
-│       ├── ExpenseDataQueryFunction.cs      # NEW — /api/runs/{runId}/tools/expenses/query
-│       └── ConsensusCaseFunction.cs         # MODIFIED — 60s timeout
-
-frontend/src/
-├── api/
-│   └── runsClient.ts                        # MODIFIED — add ToolTrace types
-├── components/
-│   ├── AiVerdictPanel.tsx                   # MODIFIED — render tool trace
-│   └── ToolTracePanel.tsx                   # NEW — collapsible tool trace component
-
-infra/modules/
-├── foundry.bicep                            # MODIFIED — add Foundry Project + Toolbox
-└── rbac.bicep                               # MODIFIED — add toolbox RBAC if needed
+specs/003-agent-tools/
+├── plan.md              # This file
+├── research.md          # Phase 0 output — streaming & tool integration decisions
+├── data-model.md        # Phase 1 output — SSE event schema, updated entities
+├── quickstart.md        # Phase 1 output — local dev guide for tool-augmented investigations
+├── contracts/
+│   └── sse-events.md    # Phase 1 output — SSE event contract
+└── tasks.md             # Phase 2 output (via /speckit.tasks)
 ```
 
-## Key Technical Decisions
-
-### R1. Data Retrieval Tool — HTTP Function + Function-Calling Registration
-
-**Decision**: Implement as an Azure Function HTTP endpoint
-(`/api/runs/{runId}/tools/expenses/query`) that loads the Run blob,
-applies filters, and returns JSON. Register the tool with the Agent
-Framework via `AIFunction` / `ChatOptions.Tools` so the model can call
-it autonomously during conversation.
-
-**Architecture**:
-1. `ExpenseDataQueryFunction` — HTTP trigger, loads Run from blob, delegates
-   to `RunDataQueryService` for filtering/aggregation
-2. `RunDataQueryService` — pure logic: accepts `(Run, RunDataQuery)`,
-   returns `RunDataQueryResult`. Strips `IsInjectedFraud`/`InjectedPattern`.
-3. Agent tool registration: In `AgentInvestigator`, register an `AIFunction`
-   wrapping the query logic. The function receives the `RunId` from closure
-   (captured when the investigation starts) and calls `RunDataQueryService`
-   in-process — avoiding an HTTP round-trip during the agent loop.
-
-**Why in-process for the agent loop**: Even though FR-003 requires an HTTP
-endpoint (for future cross-service use), the agent uses the same
-`RunDataQueryService` logic in-process during the investigation. The Run is
-loaded once by `InvestigateAsync` at investigation start and passed to the
-tool closure — this avoids repeated blob reads during the agent's tool-calling
-loop. The Run is NOT held in memory across requests, only within a single
-investigation's lifetime (per the reconciled spec clarification).
-
-**Compact vs Detail mode** (FR-002, FR-004):
-- Compact (default): `{ metadata, aggregates: { meanAmount, medianAmount,
-  minAmount, maxAmount, distinctVendors, distinctCategories }, topRecords: [...top 10 by score] }`
-- Detail: `{ metadata, records: [...full filtered records with employees + detection] }`
-
-### R2. Code Interpreter — Foundry Toolbox via MCP
-
-**Decision**: Connect to the Foundry Toolbox's MCP endpoint using the C# MCP
-SDK (`ModelContextProtocol` package). The toolbox contains the Code Interpreter
-tool provisioned in the Foundry project.
-
-**C# adaptation from the Python reference**:
-
-The Python reference uses:
-```python
-_toolbox = MCPStreamableHTTPTool(name=toolbox_name, url=toolbox_url, http_client=http_client)
-_agent = chat_client.as_agent(tools=[_toolbox])
-```
-
-In C#, the equivalent is:
-1. Create an `HttpClient` with bearer token auth (`DefaultAzureCredential`
-   with scope `https://ai.azure.com/.default`)
-2. Use the C# MCP SDK to connect to the toolbox MCP endpoint:
-   `{projectEndpoint}/toolboxes/{name}/versions/{version}/mcp?api-version=v1`
-3. List available tools from the MCP server
-4. Register them as `AITool` instances with the `ChatClientAgent`
-
-**Toolbox URL pattern**:
-```
-https://{aiServicesName}.services.ai.azure.com/api/projects/{projectName}/toolboxes/{toolboxName}/versions/{version}/mcp?api-version=v1
-```
-
-**Configuration** (app settings):
-- `Foundry__ProjectEndpoint` — e.g., `https://frauddemoshi4qxw6ais.services.ai.azure.com/api/projects/fraud-demo`
-- `Foundry__ToolboxName` — e.g., `fraud-ai-tools`
-- `Foundry__ToolboxVersion` — e.g., `1`
-
-**Auth**: Bearer token from `DefaultAzureCredential` with scope
-`https://ai.azure.com/.default`, injected via a delegating handler on the
-`HttpClient`. Same pattern as the Python `_ToolboxAuth` class.
-
-**Graceful degradation** (FR-009): If the toolbox connection fails (MCP
-handshake timeout, 401/403, toolbox not found), the agent proceeds with
-only the data retrieval tool. The failure is logged and a note is added
-to the tool trace.
-
-### R3. Agent Tool Registration & Trace Capture
-
-**Decision**: Register tools with `ChatOptions.Tools` when constructing the
-`ChatClientAgent`. Capture tool invocations by intercepting the agent's
-conversation history after `RunAsync` completes.
-
-**Tool registration**:
-```csharp
-var tools = new List<AITool>();
-// 1. Data retrieval tool (in-process, wraps RunDataQueryService)
-tools.Add(AIFunctionFactory.Create(queryRunData, "query_expense_data", "Query filtered expense data from the run"));
-// 2. Code Interpreter tools (from MCP toolbox, if available)
-if (mcpTools != null) tools.AddRange(mcpTools);
-
-var chatOptions = new ChatOptions { Tools = tools, ToolMode = ChatToolMode.Auto };
-var agent = new ChatClientAgent(chatClient, instructions: systemPrompt);
-var response = await agent.RunAsync(prompt, chatOptions, cancellationToken: cts.Token);
-```
-
-**Trace capture**: After `RunAsync`, iterate through `response.Messages` to
-extract tool call entries (function calls + function results) and any
-intermediate assistant messages. Build `ToolTrace` from these.
-
-**Max tool calls** (FR-013): Set `chatOptions.MaxOutputTokens` and implement
-a call counter in the tool wrapper that returns a "max calls reached" message
-after 10 invocations.
-
-### R4. System Prompt Updates
-
-**Decision**: Extend the existing system prompt with a new "AVAILABLE TOOLS"
-section that describes both tools, their parameters, and usage guidance.
-
-The prompt addition will be appended after the existing FEATURE MEANINGS
-section and before the JSON output format:
+### Source Code (repository root)
 
 ```text
-AVAILABLE TOOLS:
-You have access to the following tools. USE THEM to strengthen your analysis.
+backend/
+├── src/
+│   ├── Domain/
+│   │   └── Entities/
+│   │       ├── ToolInvocation.cs          # (existing) Tool call record
+│   │       └── AiInvestigationResult.cs   # (existing) Has ToolTrace property
+│   ├── Application/
+│   │   ├── Abstractions/
+│   │   │   ├── IRunDataQueryService.cs    # (existing) Query service interface
+│   │   │   ├── IAiInvestigator.cs         # (existing) Investigation interface
+│   │   │   └── IFoundryToolboxClient.cs   # (existing) MCP toolbox interface
+│   │   ├── Dtos/
+│   │   │   └── RunDataQueryDto.cs         # (existing) Query + result DTOs
+│   │   └── Services/
+│   │       ├── RunDataQueryService.cs     # (existing) Filter/aggregate implementation
+│   │       └── InvestigateCaseHandler.cs  # (existing) Investigation orchestrator
+│   ├── Infrastructure/
+│   │   └── Ai/
+│   │       ├── AgentInvestigator.cs       # (modify) Add streaming callback for tool events
+│   │       └── FoundryToolboxClient.cs    # (existing) MCP client for Code Interpreter
+│   └── Functions/
+│       └── Endpoints/
+│           ├── InvestigateCaseFunction.cs  # (modify) Add SSE streaming variant
+│           └── ConsensusCaseFunction.cs    # (existing) Arbiter has no tools
+└── tests/
+    └── unit/
+        ├── Application.Tests/             # (extend) SSE streaming tests
+        └── Infrastructure.Tests/          # (existing) AgentInvestigator tests
 
-1. query_expense_data — Query filtered expense data from the run dataset.
-   Use this to examine broader patterns: all expenses from the same vendor,
-   the employee's full history, expenses in a specific category, etc.
-   Parameters: employeeId, vendor, category, band, dateRangeStart, dateRangeEnd,
-   minAmount, maxAmount, limit (default 100), detail (default false).
-   - Use detail=false first to get a compact summary, then detail=true if you
-     need specific records.
-
-2. code_interpreter — Execute Python code for complex analysis.
-   Use this for statistical tests, temporal pattern analysis, Benford's law,
-   distribution comparisons, or any quantitative analysis that would strengthen
-   your investigation.
-
-TOOL USAGE GUIDANCE:
-- ALWAYS use query_expense_data to examine the vendor's history across the
-  full dataset — is this vendor used by other employees? How many times?
-- ALWAYS use query_expense_data to look at the employee's full expense
-  history — are there patterns of threshold gaming or weekend submissions?
-- Use code_interpreter when you need to compute statistics, run comparisons,
-  or detect temporal patterns that can't be expressed in natural language.
-- You may call tools multiple times with different parameters.
-- Start with compact summaries, then drill into details as needed.
+frontend/
+├── src/
+│   ├── api/
+│   │   └── runsClient.ts                 # (modify) Add SSE investigation client
+│   ├── components/
+│   │   ├── ToolTracePanel.tsx             # (modify) Accept streaming updates
+│   │   ├── AiVerdictPanel.tsx             # (modify) Wire streaming investigation
+│   │   └── InvestigationProgress.tsx      # (modify) Show live tool trace during investigation
+│   └── routes/
+│       └── CaseDetailRoute.tsx            # (existing) Uses AiVerdictPanel
+└── tests/
+    └── components/                        # (extend) Streaming tool trace tests
 ```
 
-### R5. ToolTrace Data Model Extension
-
-**Decision**: Add a `ToolTrace` property to `AiInvestigationResult`.
-
-```csharp
-public IReadOnlyList<ToolInvocation>? ToolTrace { get; }
-```
-
-Where `ToolInvocation` is:
-```csharp
-public sealed record ToolInvocation(
-    string ToolName,
-    string Parameters,       // JSON string of the call parameters
-    string ResponseSummary,  // "12 records returned" or "Python output: 42 lines"
-    string? ResponseData,    // Truncated response (first 1000 chars)
-    string? Reasoning,       // Agent's intermediate reasoning (if captured)
-    long LatencyMs,
-    bool Succeeded
-);
-```
-
-This is nullable on `AiInvestigationResult` — existing results without tools
-have `ToolTrace = null`. The frontend checks for null/empty to decide whether
-to show the trace panel.
-
-### R6. Frontend ToolTrace Panel
-
-**Decision**: New `ToolTracePanel` component, rendered inside `AiVerdictPanel`
-as a collapsible section. Each `ToolInvocation` is a card showing:
-- Tool icon + name
-- Parameters (collapsible JSON)
-- Response summary (always visible)
-- Agent reasoning (if present)
-- Code block for Code Interpreter (syntax-highlighted Python)
-- Execution output (truncated with "show more")
-
-For consensus, each model's column in the side-by-side grid includes its
-own `ToolTracePanel`.
-
-### R7. Infrastructure — Foundry Project + Toolbox
-
-**Decision**: Extend `infra/modules/foundry.bicep` to provision:
-1. A **Foundry AI Hub** (if not already present — may need
-   `Microsoft.MachineLearningServices/workspaces` of kind `Hub`)
-2. A **Foundry Project** linked to the AI Services account
-3. A **Toolbox** with the Code Interpreter tool
-
-The exact Bicep resource types depend on the current GA Foundry API. If
-toolbox provisioning is not yet available in Bicep, the toolbox creation
-will be documented as a portal step in `docs/setup.md` per the clarification.
-
-**App settings additions**:
-- `Foundry__ProjectEndpoint`
-- `Foundry__ToolboxName`
-- `Foundry__ToolboxVersion`
+**Structure Decision**: Extends the existing layered web application structure
+from spec 001. No new projects or directories — all changes are modifications
+to existing files or new files within existing directories.
 
 ## Complexity Tracking
 

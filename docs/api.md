@@ -64,6 +64,43 @@ The endpoint always responds **within ~30 s**; AI failures degrade to
 (FR-014). Successful investigations are persisted onto the **originating**
 Run blob with ETag concurrency (one retry on 412).
 
+## `POST /runs/{runId}/cases/{caseId}/investigate/stream` — `investigateCaseStream`
+
+SSE streaming variant of `investigateCase` (FR-017). Same request body.
+Streams tool invocations in real time, then emits the final result.
+
+**Request** (same as `investigateCase`):
+
+```json
+{
+  "modelDeploymentName": "gpt-5.4",
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+**Response**: `200 OK` with `Content-Type: text/event-stream`.
+
+Events arrive as the agent uses tools:
+
+```
+event: tool_call
+data: {"toolName":"query_expense_data","parameters":"{...}","responseSummary":"47 matches, 10 returned","latencyMs":312,"succeeded":true}
+
+event: tool_call
+data: {"toolName":"code_interpreter_0","parameters":"{...}","responseSummary":"Output: 15 lines","latencyMs":4200,"succeeded":true}
+
+event: complete
+data: {"recordId":"...","status":"Succeeded","verdict":"Likely","rationale":"...","toolTrace":[...]}
+```
+
+Event types: `tool_call` (0+), then exactly one of `complete` or `error`.
+The result is persisted before the `complete` event is written.
+`404` for run/case not found is returned as JSON (not SSE).
+
+**Client usage**: Use `fetch` + `ReadableStream` (not `EventSource`, which
+only supports GET). See `frontend/src/api/runsClient.ts` → `streamInvestigation()`.
+
 ## `POST /runs/{runId}/cases/{caseId}/consensus` — `consensusInvestigate`
 
 Runs all 3 deployed AI models (GPT-5.4, GPT-5.3 Chat, GPT-5.4 Mini)
@@ -189,3 +226,86 @@ All fields are optional. Filters combine with AND logic.
 Deletes a Run and its associated blob and table index entry.
 
 **Response**: `204 No Content` on success, `404` if not found.
+
+## `POST /runs/{runId}/cases/{caseId}/debate` — `debateCase`
+
+Runs a Debate investigation: two opposing AI agents (fraud-leaning and non-fraud-leaning)
+independently review the case in parallel, then an arbiter evaluates both arguments.
+
+**Request**:
+
+```json
+{
+  "model": "gpt-5.4",
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+All fields are optional. `model` applies to both debate agents and the arbiter.
+
+**Response**: `200 OK`
+
+```json
+{
+  "finalVerdict": "Likely",
+  "temperature": 0.7,
+  "model": "gpt-5.4",
+  "fraudLeaning": { "status": "Succeeded", "verdict": "Likely", "rationale": "...", "keySignals": [...], "recommendedAction": "...", "toolTrace": [...] },
+  "nonFraudLeaning": { "status": "Succeeded", "verdict": "Unlikely", "rationale": "...", "keySignals": [...], "recommendedAction": "...", "toolTrace": [...] },
+  "arbiter": { "finalVerdict": "Likely", "summary": "...", "agreements": [...], "disagreements": [...], "reasoning": "..." }
+}
+```
+
+`404` if the run or case is missing.
+
+## `POST /runs/{runId}/cases/{caseId}/junior-senior` — `juniorSeniorCase`
+
+Runs a Junior → Senior investigation: a cheap model reviews first, then escalates
+to a premium model if the junior's confidence is ≤ 0.85.
+
+**Request**:
+
+```json
+{
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+Models are internally configured (junior = gpt-5.4-mini, senior = gpt-5.4).
+
+**Response**: `200 OK`
+
+```json
+{
+  "finalVerdict": "Unlikely",
+  "escalated": true,
+  "confidenceScore": 0.65,
+  "escalationThreshold": 0.85,
+  "temperature": 0.7,
+  "junior": { "model": "gpt-5.4-mini", "status": "Succeeded", "verdict": "Likely", "rationale": "...", "keySignals": [...], "confidenceScore": 0.65, "toolTrace": [...] },
+  "senior": { "model": "gpt-5.4", "status": "Succeeded", "verdict": "Unlikely", "rationale": "...", "keySignals": [...], "toolTrace": [...] }
+}
+```
+
+When not escalated, `escalated` is `false` and `senior` is `null`.
+`404` if the run or case is missing.
+
+## `GET /prompts` — `prompts`
+
+Returns all static prompt constants used across investigation modes.
+
+**Response**: `200 OK`
+
+```json
+{
+  "baseSystemPrompt": "...",
+  "fraudLeaningBias": "...",
+  "nonFraudLeaningBias": "...",
+  "debateArbiterPrompt": "...",
+  "juniorConfidenceExtension": "...",
+  "seniorPreambleTemplate": "...",
+  "consensusArbiterPrompt": "..."
+}
+```

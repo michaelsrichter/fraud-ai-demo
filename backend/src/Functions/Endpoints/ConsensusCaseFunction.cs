@@ -31,7 +31,7 @@ public sealed class ConsensusCaseFunction
     private static readonly string[] AllModels = { "gpt-5.4", "gpt-5.3-chat", "gpt-5.4-mini" };
     private static readonly string ArbiterModel = "gpt-5.4";
 
-    private static readonly string ArbiterSystemPrompt = """
+    internal static readonly string ArbiterSystemPrompt = """
         You are a senior fraud review arbiter. You have received the independent assessments
         of three AI fraud investigators (each using a different model) for the same expense case.
         
