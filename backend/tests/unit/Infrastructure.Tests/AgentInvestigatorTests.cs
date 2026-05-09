@@ -140,4 +140,60 @@ public class AgentInvestigatorTests
         prompt.Should().Contain("ALWAYS use");
         prompt.Should().Contain("USE THEM");
     }
+
+    // --- T003a: Bias prompt fields and systemPromptOverride tests ---
+
+    [Fact]
+    public void FraudLeaningBias_Is_NonEmpty_And_Contains_Fraud_Advocate_Language()
+    {
+        AgentInvestigator.FraudLeaningBias.Should().NotBeNullOrWhiteSpace();
+        AgentInvestigator.FraudLeaningBias.Should().Contain("FRAUD ADVOCATE");
+        AgentInvestigator.FraudLeaningBias.Should().Contain("prosecutor");
+    }
+
+    [Fact]
+    public void NonFraudLeaningBias_Is_NonEmpty_And_Contains_Defense_Advocate_Language()
+    {
+        AgentInvestigator.NonFraudLeaningBias.Should().NotBeNullOrWhiteSpace();
+        AgentInvestigator.NonFraudLeaningBias.Should().Contain("DEFENSE ADVOCATE");
+        AgentInvestigator.NonFraudLeaningBias.Should().Contain("defense attorney");
+    }
+
+    [Fact]
+    public void DebateArbiterPrompt_Is_NonEmpty_And_Contains_Judge_Language()
+    {
+        AgentInvestigator.DebateArbiterPrompt.Should().NotBeNullOrWhiteSpace();
+        AgentInvestigator.DebateArbiterPrompt.Should().Contain("arbiter");
+        AgentInvestigator.DebateArbiterPrompt.Should().Contain("finalVerdict");
+    }
+
+    [Fact]
+    public void JuniorConfidenceExtension_Is_NonEmpty_And_Contains_ConfidenceScore()
+    {
+        AgentInvestigator.JuniorConfidenceExtension.Should().NotBeNullOrWhiteSpace();
+        AgentInvestigator.JuniorConfidenceExtension.Should().Contain("confidenceScore");
+    }
+
+    [Fact]
+    public void SeniorPreambleTemplate_Is_NonEmpty_And_Contains_Placeholder()
+    {
+        AgentInvestigator.SeniorPreambleTemplate.Should().NotBeNullOrWhiteSpace();
+        AgentInvestigator.SeniorPreambleTemplate.Should().Contain("{0}");
+        AgentInvestigator.SeniorPreambleTemplate.Should().Contain("SENIOR");
+    }
+
+    [Fact]
+    public void All_Prompt_Constants_Are_Distinct()
+    {
+        var prompts = new[]
+        {
+            AgentInvestigator.SystemPromptText,
+            AgentInvestigator.FraudLeaningBias,
+            AgentInvestigator.NonFraudLeaningBias,
+            AgentInvestigator.DebateArbiterPrompt,
+            AgentInvestigator.JuniorConfidenceExtension,
+            AgentInvestigator.SeniorPreambleTemplate,
+        };
+        prompts.Should().OnlyHaveUniqueItems();
+    }
 }

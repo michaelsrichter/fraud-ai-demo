@@ -54,9 +54,9 @@ public class InvestigateCaseHandlerStreamTests
 
         investigator.Setup(i => i.InvestigateAsync(
                 It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(),
-                It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<ToolInvocation>?>()))
-            .Callback<Run, Case, string?, float?, bool, CancellationToken, IProgress<ToolInvocation>?>(
-                (_, _, _, _, _, _, p) => capturedProgress = p)
+                It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<ToolInvocation>?>(), It.IsAny<string?>()))
+            .Callback<Run, Case, string?, float?, bool, CancellationToken, IProgress<ToolInvocation>?, string?>(
+                (_, _, _, _, _, _, p, _) => capturedProgress = p)
             .ReturnsAsync(aiResult);
 
         var handler = new InvestigateCaseHandler(repo.Object, investigator.Object,
@@ -88,7 +88,7 @@ public class InvestigateCaseHandlerStreamTests
 
         investigator.Setup(i => i.InvestigateAsync(
                 It.IsAny<Run>(), It.IsAny<Case>(), It.IsAny<string?>(), It.IsAny<float?>(),
-                It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<ToolInvocation>?>()))
+                It.IsAny<bool>(), It.IsAny<CancellationToken>(), It.IsAny<IProgress<ToolInvocation>?>(), It.IsAny<string?>()))
             .ReturnsAsync(aiResult);
 
         var handler = new InvestigateCaseHandler(repo.Object, investigator.Object,

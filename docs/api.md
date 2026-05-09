@@ -226,3 +226,86 @@ All fields are optional. Filters combine with AND logic.
 Deletes a Run and its associated blob and table index entry.
 
 **Response**: `204 No Content` on success, `404` if not found.
+
+## `POST /runs/{runId}/cases/{caseId}/debate` — `debateCase`
+
+Runs a Debate investigation: two opposing AI agents (fraud-leaning and non-fraud-leaning)
+independently review the case in parallel, then an arbiter evaluates both arguments.
+
+**Request**:
+
+```json
+{
+  "model": "gpt-5.4",
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+All fields are optional. `model` applies to both debate agents and the arbiter.
+
+**Response**: `200 OK`
+
+```json
+{
+  "finalVerdict": "Likely",
+  "temperature": 0.7,
+  "model": "gpt-5.4",
+  "fraudLeaning": { "status": "Succeeded", "verdict": "Likely", "rationale": "...", "keySignals": [...], "recommendedAction": "...", "toolTrace": [...] },
+  "nonFraudLeaning": { "status": "Succeeded", "verdict": "Unlikely", "rationale": "...", "keySignals": [...], "recommendedAction": "...", "toolTrace": [...] },
+  "arbiter": { "finalVerdict": "Likely", "summary": "...", "agreements": [...], "disagreements": [...], "reasoning": "..." }
+}
+```
+
+`404` if the run or case is missing.
+
+## `POST /runs/{runId}/cases/{caseId}/junior-senior` — `juniorSeniorCase`
+
+Runs a Junior → Senior investigation: a cheap model reviews first, then escalates
+to a premium model if the junior's confidence is ≤ 0.85.
+
+**Request**:
+
+```json
+{
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+Models are internally configured (junior = gpt-5.4-mini, senior = gpt-5.4).
+
+**Response**: `200 OK`
+
+```json
+{
+  "finalVerdict": "Unlikely",
+  "escalated": true,
+  "confidenceScore": 0.65,
+  "escalationThreshold": 0.85,
+  "temperature": 0.7,
+  "junior": { "model": "gpt-5.4-mini", "status": "Succeeded", "verdict": "Likely", "rationale": "...", "keySignals": [...], "confidenceScore": 0.65, "toolTrace": [...] },
+  "senior": { "model": "gpt-5.4", "status": "Succeeded", "verdict": "Unlikely", "rationale": "...", "keySignals": [...], "toolTrace": [...] }
+}
+```
+
+When not escalated, `escalated` is `false` and `senior` is `null`.
+`404` if the run or case is missing.
+
+## `GET /prompts` — `prompts`
+
+Returns all static prompt constants used across investigation modes.
+
+**Response**: `200 OK`
+
+```json
+{
+  "baseSystemPrompt": "...",
+  "fraudLeaningBias": "...",
+  "nonFraudLeaningBias": "...",
+  "debateArbiterPrompt": "...",
+  "juniorConfidenceExtension": "...",
+  "seniorPreambleTemplate": "...",
+  "consensusArbiterPrompt": "..."
+}
+```

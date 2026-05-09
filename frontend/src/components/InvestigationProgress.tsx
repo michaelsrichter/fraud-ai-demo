@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 interface Props {
   /** Which mode is running */
-  mode: "single" | "consensus";
+  mode: "single" | "consensus" | "debate" | "junior-senior";
   /** Number of tool calls received via streaming (optional) */
   toolCallCount?: number;
 }
@@ -40,7 +40,10 @@ export function InvestigationProgress({ mode, toolCallCount }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="progress-pulse" />
           <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-            {mode === "consensus" ? "Running 3 models + arbiter" : "AI Agent Investigating"}
+            {mode === "consensus" ? "Running 3 models + arbiter"
+              : mode === "debate" ? "Running debate: 2 agents + arbiter"
+              : mode === "junior-senior" ? "Running Junior → Senior pipeline"
+              : "AI Agent Investigating"}
           </span>
         </div>
         <span className="muted" style={{ fontSize: "0.8rem", fontVariantNumeric: "tabular-nums" }}>

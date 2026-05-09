@@ -318,6 +318,109 @@ export async function consensusInvestigate(runId: string, caseId: string, temper
   return res.json();
 }
 
+// --- Investigation Mode types (004-investigation-modes) ---
+
+export type InvestigationMode = "single" | "consensus" | "debate" | "junior-senior";
+
+export interface InvestigationModeInfo {
+  key: InvestigationMode;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+export const INVESTIGATION_MODES: InvestigationModeInfo[] = [
+  { key: "single", label: "Single Agent", description: "One AI investigator reviews the case", icon: "🔍" },
+  { key: "consensus", label: "Consensus", description: "Multiple models + arbiter vote", icon: "🤝" },
+  { key: "debate", label: "Debate", description: "Opposing viewpoints + judge", icon: "⚖️" },
+  { key: "junior-senior", label: "Junior → Senior", description: "Escalation pipeline", icon: "📈" },
+];
+
+// --- Debate Mode types ---
+
+export interface DebateAgentResult {
+  status: string;
+  verdict: string | null;
+  rationale: string | null;
+  keySignals: string[] | null;
+  recommendedAction: string | null;
+  unavailableReason: string | null;
+  toolTrace: ToolInvocation[] | null;
+}
+
+export interface DebateResult {
+  finalVerdict: string;
+  temperature: number | null;
+  model: string;
+  fraudLeaning: DebateAgentResult;
+  nonFraudLeaning: DebateAgentResult;
+  arbiter: ConsensusArbiter | null;
+}
+
+export async function debateInvestigate(
+  runId: string,
+  caseId: string,
+  model?: string,
+  temperature?: number,
+  allowConfidenceScores?: boolean,
+): Promise<DebateResult> {
+  const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/debate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, temperature, allowConfidenceScores }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+// --- Junior → Senior Mode types ---
+
+export interface JuniorResult {
+  model: string;
+  status: string;
+  verdict: string | null;
+  rationale: string | null;
+  keySignals: string[] | null;
+  recommendedAction: string | null;
+  confidenceScore: number;
+  toolTrace: ToolInvocation[] | null;
+}
+
+export interface SeniorResult {
+  model: string;
+  status: string;
+  verdict: string | null;
+  rationale: string | null;
+  keySignals: string[] | null;
+  recommendedAction: string | null;
+  toolTrace: ToolInvocation[] | null;
+}
+
+export interface JuniorSeniorResult {
+  finalVerdict: string;
+  escalated: boolean;
+  confidenceScore: number;
+  escalationThreshold: number;
+  temperature: number | null;
+  junior: JuniorResult;
+  senior: SeniorResult | null;
+}
+
+export async function juniorSeniorInvestigate(
+  runId: string,
+  caseId: string,
+  temperature?: number,
+  allowConfidenceScores?: boolean,
+): Promise<JuniorSeniorResult> {
+  const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/junior-senior`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ temperature, allowConfidenceScores }),
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export const AVAILABLE_MODELS = [
   {
     name: "gpt-5.4",
@@ -364,6 +467,22 @@ export function trackActivity(activity: "expense-run" | "insurance-run" | "payme
 
 export async function getPromptPreview(runId: string, caseId: string): Promise<{ systemPrompt: string; userPrompt: string }> {
   const res = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/prompt`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
+export interface AllPrompts {
+  baseSystemPrompt: string;
+  fraudLeaningBias: string;
+  nonFraudLeaningBias: string;
+  debateArbiterPrompt: string;
+  juniorConfidenceExtension: string;
+  seniorPreambleTemplate: string;
+  consensusArbiterPrompt: string;
+}
+
+export async function getAllPrompts(): Promise<AllPrompts> {
+  const res = await fetch(`${API_BASE}/prompts`);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 }
