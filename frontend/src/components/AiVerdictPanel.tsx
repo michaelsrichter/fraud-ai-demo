@@ -20,7 +20,15 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
 
   return (
     <div className="panel">
-      <h2>AI Investigation</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+        <span style={{ fontSize: "1.5rem" }}>🤖</span>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "1.15rem" }}>AI Investigation</h2>
+          <p className="help" style={{ margin: "2px 0 0", fontSize: "0.78rem" }}>
+            Choose an investigation strategy below, then run the AI agent on this case.
+          </p>
+        </div>
+      </div>
       <ModeTabBar activeMode={activeMode} onModeChange={setActiveMode} />
 
       {activeMode === "single" && (

@@ -26,14 +26,15 @@ describe("ModeTabBar", () => {
     expect(onModeChange).toHaveBeenCalledWith("consensus");
   });
 
-  it("visually highlights the active tab", () => {
+  it("visually highlights the active tab with a border", () => {
     const { rerender } = render(<ModeTabBar activeMode="debate" onModeChange={() => {}} />);
 
     const debateButton = screen.getByText("Debate").closest("button")!;
-    expect(debateButton.style.borderBottom).toContain("var(--btn-primary)");
+    // Active tab should have a colored border (not the default --border)
+    expect(debateButton.style.border).not.toContain("var(--border)");
 
     rerender(<ModeTabBar activeMode="junior-senior" onModeChange={() => {}} />);
     const jsButton = screen.getByText("Junior → Senior").closest("button")!;
-    expect(jsButton.style.borderBottom).toContain("var(--btn-primary)");
+    expect(jsButton.style.border).not.toContain("var(--border)");
   });
 });

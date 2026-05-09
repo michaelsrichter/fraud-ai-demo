@@ -47,34 +47,94 @@ export function CaseDetailRoute() {
   const c = caseQuery.data;
   const det = c.detection;
 
+  const dayOfWeek = new Date(c.expense.submittedUtc).toLocaleDateString(undefined, { weekday: "long" });
+  const isWeekend = ["Saturday", "Sunday"].includes(dayOfWeek);
+
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <Link to={`/labs/expenses/${runId}`}>&larr; Back to run</Link>
-        <h2>Expense details</h2>
-        <p className="help">The individual expense claim under review.</p>
-        <p>
-          <strong>${c.expense.amount.toFixed(2)}</strong> &middot; {c.expense.category}
-        </p>
-        <p className="muted">{c.expense.vendor}</p>
-        <p className="muted">{new Date(c.expense.submittedUtc).toLocaleString()}</p>
-        {c.expense.isInjectedFraud && (
-          <p style={{ color: "#f87171", fontSize: "0.8rem" }}>Ground truth: injected fraud ({c.expense.injectedPattern})</p>
-        )}
-        <h2>Employee profile</h2>
-        <p className="help">The synthetic employee who submitted this expense.</p>
-        <p>
-          <strong>{c.employee.name}</strong>
-        </p>
-        <p className="muted">
-          {c.employee.role} · {c.employee.department}
-        </p>
-        <p className="muted" title="Average monthly expense this employee generates in the simulation">
-          Baseline spend: ${c.employee.baselineMonthlyExpense.toFixed(0)} / month
-        </p>
-      </aside>
-      <main className="main">
-        <div className="panel">
+    <div style={{ padding: 24, maxWidth: 1200, margin: "0 auto" }}>
+      {/* Back link */}
+      <Link to={`/labs/expenses/${runId}`} style={{ fontSize: "0.85rem", marginBottom: 16, display: "inline-block" }}>&larr; Back to run</Link>
+
+      {/* Expense header banner */}
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: "1.5rem", margin: "0 0 4px" }}>
+              ${c.expense.amount.toFixed(2)}
+              <span className={`badge badge-${det.band.toLowerCase()}`} style={{ marginLeft: 12, fontSize: "0.7rem", verticalAlign: "middle" }}>
+                {det.band} Risk
+              </span>
+            </h1>
+            {c.expense.isInjectedFraud && (
+              <p style={{ color: "#f87171", fontSize: "0.78rem", margin: "4px 0 0" }}>
+                Ground truth: injected fraud ({c.expense.injectedPattern})
+              </p>
+            )}
+          </div>
+          <a
+            href="#ai-investigation"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              background: "var(--btn-primary)",
+              color: "#fff",
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              textDecoration: "none",
+              transition: "opacity 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            🤖 Run AI Investigation
+          </a>
+        </div>
+
+        {/* Expense dimensions */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 16,
+          marginTop: 16,
+          padding: "16px 0 0",
+          borderTop: "1px solid var(--border)",
+        }}>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Category</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{c.expense.category}</div>
+          </div>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Vendor</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{c.expense.vendor}</div>
+          </div>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Submitted</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+              {new Date(c.expense.submittedUtc).toLocaleDateString()}
+              {isWeekend && <span style={{ color: "var(--band-medium)", marginLeft: 6, fontSize: "0.75rem" }}>⚠ Weekend</span>}
+            </div>
+          </div>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Employee</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{c.employee.name}</div>
+            <div className="muted" style={{ fontSize: "0.75rem" }}>{c.employee.role} · {c.employee.department}</div>
+          </div>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Baseline Spend</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>${c.employee.baselineMonthlyExpense.toFixed(0)}/mo</div>
+          </div>
+          <div>
+            <div className="help" style={{ margin: 0, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>ML Score</div>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{det.confidence.toFixed(4)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ML Detection panel */}
+      <div className="panel">
           <h1>
             ML Detection &nbsp;
             <span className={`badge badge-${det.band.toLowerCase()}`}>{det.band}</span>
@@ -146,13 +206,15 @@ export function CaseDetailRoute() {
             </p>
           )}
         </div>
-        <AiVerdictPanel
-          investigation={c.investigation ?? null}
-          isLoading={investigateMutation.isPending}
-          onInvestigate={(model, temperature, allowConfidenceScores) => investigateMutation.mutate({ model, temperature, allowConfidenceScores })}
-          runId={runId!}
-          caseId={caseId!}
-        />
+        <div id="ai-investigation">
+          <AiVerdictPanel
+            investigation={c.investigation ?? null}
+            isLoading={investigateMutation.isPending}
+            onInvestigate={(model, temperature, allowConfidenceScores) => investigateMutation.mutate({ model, temperature, allowConfidenceScores })}
+            runId={runId!}
+            caseId={caseId!}
+          />
+        </div>
         {investigateMutation.error && (
           <p className="error">{(investigateMutation.error as Error).message}</p>
         )}
@@ -199,7 +261,6 @@ export function CaseDetailRoute() {
             </p>
           </div>
         )}
-      </main>
     </div>
   );
 }
