@@ -112,8 +112,8 @@ Single Agent and Consensus modes continue to function exactly as they do today. 
 - **FR-010**: System MUST support a Debate investigation mode with three agents: a fraud-leaning investigator, a non-fraud-leaning investigator, and an arbiter.
 - **FR-011**: The fraud-leaning investigator MUST use modified instructions that bias the agent toward identifying possible fraud while using the same tools and case details as all other modes.
 - **FR-012**: The non-fraud-leaning investigator MUST use modified instructions that bias the agent toward finding legitimate explanations and avoiding false positives while using the same tools and case details.
-- **FR-013**: Both debate investigators MUST execute independently and in isolation before the arbiter runs.
-- **FR-014**: The arbiter MUST receive the original case details and both investigators' findings (reasoning, evidence summary, and recommendation) and produce a final determination using the shared output schema.
+- **FR-013**: Both debate investigators MUST execute independently, in isolation, and in parallel before the arbiter runs.
+- **FR-014**: The arbiter MUST receive the original case details and both investigators' findings (reasoning, evidence summary, and recommendation) and produce a final determination using the shared output schema. The arbiter MUST use a decisive tone — picking the stronger argument and committing to a verdict, consistent with the Consensus arbiter style.
 - **FR-015**: The user MUST be able to select the model and temperature for Debate mode. The selected model applies to both debate agents and the arbiter.
 
 #### Junior → Senior Mode
@@ -123,12 +123,12 @@ Single Agent and Consensus modes continue to function exactly as they do today. 
 - **FR-022**: If the junior investigator's confidence score exceeds a configurable escalation threshold, the system MUST return the junior's result directly without invoking the senior investigator.
 - **FR-023**: If the junior investigator's confidence score does not exceed the escalation threshold, the system MUST escalate to the senior investigator, passing the original case details and the junior's findings.
 - **FR-024**: The senior investigator MUST use the latest/highest-quality available model and produce the final determination using the shared output schema.
-- **FR-025**: The escalation threshold MUST be set generously (relatively high) so that ambiguous cases are escalated frequently during demos.
+- **FR-025**: The escalation threshold MUST default to 0.85 (85% confidence) so that only very high-confidence junior results skip escalation and the majority of demo cases (~60-70%) showcase the full escalation pipeline.
 - **FR-026**: Junior and senior models MUST be configured internally (not user-selectable). Temperature MUST remain configurable from the UI.
 
 #### UI & Configuration
 
-- **FR-030**: The UI MUST display all four investigation modes with clear labels and allow easy switching between them.
+- **FR-030**: The UI MUST display all four investigation modes as a horizontal tab bar at the top of the AI Investigation panel, allowing single-click switching between modes.
 - **FR-031**: Only the active mode's configuration panel and content MUST be visible; inactive mode panels MUST be hidden.
 - **FR-032**: Each mode panel MUST expose relevant configuration controls:
   - Single Agent: selectable model, selectable temperature
@@ -163,12 +163,23 @@ Single Agent and Consensus modes continue to function exactly as they do today. 
 - **SC-006**: A demo presenter can explain and demonstrate all four modes within a single case review, completing the full demonstration in under 10 minutes.
 - **SC-007**: Prompt/instruction viewers for each mode correctly display all relevant agent instructions with clear labels distinguishing instruction types.
 
+## Clarifications
+
+### Session 2026-05-08
+
+- Q: What confidence score threshold should trigger escalation in Junior → Senior mode? → A: 0.85 (85%) — generous enough to frequently trigger escalation during demos without making the junior agent seem pointless.
+- Q: Should Debate and Junior → Senior results be persisted or transient? → A: Transient (like Consensus) — no persistence to the run repository, displayed in UI only.
+- Q: Should the two debate agents run in parallel or sequentially? → A: Parallel — consistent with Consensus mode's pattern, halves wall-clock time.
+- Q: What UI pattern should be used for mode selection? → A: Horizontal tab bar at the top of the AI Investigation panel — immediately visible, single-click switching, scales well to 4 items.
+- Q: Should the Debate arbiter be decisive or balanced? → A: Decisive — pick the stronger argument, commit to a verdict, consistent with the Consensus arbiter style.
+
 ## Assumptions
 
 - The existing Microsoft Foundry integration and AI model access will be reused for all new modes.
 - The existing shared output schema (verdict, rationale, key signals, recommended action, tool trace) is sufficient for all modes and does not require breaking changes. Confidence scoring will be added as an optional field if not already present.
 - The existing `IAiInvestigator` interface and `AgentInvestigator` implementation can be extended or wrapped to support biased prompts and sequential workflows.
 - The demo is intended for presentation purposes, so occasional model failures are acceptable as long as the UI gracefully handles them.
+- Debate and Junior → Senior mode results are transient (not persisted to the run repository), consistent with the Consensus mode pattern. Results are displayed in the UI only.
 - The escalation threshold for Junior → Senior mode is a server-side configuration, not exposed for user adjustment in the UI.
 - Models like "gpt-5.4-mini" are suitable as the junior model and "gpt-5.4" as the senior model, matching the existing model registry.
 - The Debate mode's bias instructions are additive modifications to the existing base investigation prompt, not entirely separate prompts.

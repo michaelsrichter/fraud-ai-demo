@@ -11,7 +11,7 @@ describe("ConfigPanel", () => {
   });
 
   it("shows config fields after expanding", async () => {
-    const { user } = render(<ConfigPanel onGenerate={vi.fn()} />);
+    render(<ConfigPanel onGenerate={vi.fn()} />);
     // Fields are hidden by default
     expect(screen.queryByText(/record count/i)).not.toBeInTheDocument();
     // Click to expand
