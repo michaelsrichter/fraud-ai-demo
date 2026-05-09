@@ -64,6 +64,43 @@ The endpoint always responds **within ~30 s**; AI failures degrade to
 (FR-014). Successful investigations are persisted onto the **originating**
 Run blob with ETag concurrency (one retry on 412).
 
+## `POST /runs/{runId}/cases/{caseId}/investigate/stream` — `investigateCaseStream`
+
+SSE streaming variant of `investigateCase` (FR-017). Same request body.
+Streams tool invocations in real time, then emits the final result.
+
+**Request** (same as `investigateCase`):
+
+```json
+{
+  "modelDeploymentName": "gpt-5.4",
+  "temperature": 0.7,
+  "allowConfidenceScores": false
+}
+```
+
+**Response**: `200 OK` with `Content-Type: text/event-stream`.
+
+Events arrive as the agent uses tools:
+
+```
+event: tool_call
+data: {"toolName":"query_expense_data","parameters":"{...}","responseSummary":"47 matches, 10 returned","latencyMs":312,"succeeded":true}
+
+event: tool_call
+data: {"toolName":"code_interpreter_0","parameters":"{...}","responseSummary":"Output: 15 lines","latencyMs":4200,"succeeded":true}
+
+event: complete
+data: {"recordId":"...","status":"Succeeded","verdict":"Likely","rationale":"...","toolTrace":[...]}
+```
+
+Event types: `tool_call` (0+), then exactly one of `complete` or `error`.
+The result is persisted before the `complete` event is written.
+`404` for run/case not found is returned as JSON (not SSE).
+
+**Client usage**: Use `fetch` + `ReadableStream` (not `EventSource`, which
+only supports GET). See `frontend/src/api/runsClient.ts` → `streamInvestigation()`.
+
 ## `POST /runs/{runId}/cases/{caseId}/consensus` — `consensusInvestigate`
 
 Runs all 3 deployed AI models (GPT-5.4, GPT-5.3 Chat, GPT-5.4 Mini)

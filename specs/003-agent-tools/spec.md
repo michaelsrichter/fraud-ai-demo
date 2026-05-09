@@ -14,6 +14,7 @@
 - Q: Should the data retrieval tool be an HTTP endpoint or an in-process function? → A: Both — expose as an HTTP endpoint (the agent framework calls it via function-calling over HTTP), which also makes it available for future cross-service use. An in-process optimization can be added later. The Run is NOT held in memory in Azure Functions across requests; however, within a single investigation, the Run loaded by `InvestigateAsync` MAY be passed to the tool via closure to avoid redundant blob reads during the agent's tool-calling loop.
 - Q: Should the spec mandate Code Interpreter provisioning or make it best-effort? → A: Mandate provisioning in Bicep — add the required Foundry Agent/Hub resources. The project owner will assist with any portal-side provisioning steps if needed.
 - Q: Should the tool trace capture the model's intermediate reasoning between tool calls, or just inputs/outputs? → A: Capture everything the framework exposes — intermediate reasoning messages between tool calls if available, plus all tool call inputs and outputs.
+- Q: Should the UI show tool invocations progressively during investigation or only after completion? → A: Real-time streaming — UI updates as each tool call completes (SSE).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -120,9 +121,10 @@ of the response, and the agent's interpretation.
 **Acceptance Scenarios**:
 
 1. **Given** an investigation used the data retrieval tool, **When** the
-   presenter views the case detail, **Then** the tool trace section shows:
-   the tool name, the filter parameters sent, the number of records
-   returned, and a snippet of the agent's reasoning about the results.
+   investigation is in progress, **Then** the tool trace section updates
+   in real time as each tool call completes, showing: the tool name, the
+   filter parameters sent, the number of records returned, and a snippet
+   of the agent's reasoning about the results.
 2. **Given** an investigation used the Code Interpreter, **When** the
    presenter views the case detail, **Then** the tool trace shows: the
    Python code submitted, the execution output (truncated if long), and the
@@ -187,6 +189,8 @@ one tool in the majority of investigations.
 - **Lab-specific endpoints**: The data retrieval tool endpoint is specific
   to each lab (Expenses lab for now). Future labs will have their own
   endpoints with lab-specific schemas and filter parameters.
+- **Streaming latency**: Tool trace SSE events should appear in the UI
+  within 1 second of the corresponding tool call completing on the backend.
 
 ## Requirements *(mandatory)*
 
@@ -291,10 +295,16 @@ one tool in the majority of investigations.
   intermediate reasoning messages the model produces between tool calls
   (if the Agent Framework exposes them). If the framework does not expose
   intermediate reasoning, the trace includes only tool call inputs and
-  outputs alongside the final rationale.
+  outputs alongside the final rationale. Tool trace entries MUST be
+  streamed to the frontend in real time as each tool call completes
+  (via Server-Sent Events), so the UI can render progress
+  incrementally during a tool-augmented investigation.
 - **FR-018**: The case detail UI MUST render the tool trace as a
   collapsible section within the AI verdict panel. Each tool invocation
   should be displayed as a distinct step with clear visual hierarchy.
+  During an in-progress investigation, tool trace entries MUST appear
+  progressively as they are streamed from the backend, giving the
+  audience a live view of the agent's reasoning process.
 - **FR-019**: For consensus investigations, each model's panel MUST
   display its own independent tool trace.
 - **FR-020**: If the Code Interpreter was used, the UI MUST display the

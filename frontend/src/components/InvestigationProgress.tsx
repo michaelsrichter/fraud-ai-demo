@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 interface Props {
   /** Which mode is running */
   mode: "single" | "consensus";
+  /** Number of tool calls received via streaming (optional) */
+  toolCallCount?: number;
 }
 
 const STAGES = [
@@ -15,7 +17,7 @@ const STAGES = [
   { label: "Finalizing investigation", minSec: 60 },
 ];
 
-export function InvestigationProgress({ mode }: Props) {
+export function InvestigationProgress({ mode, toolCallCount }: Props) {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -67,7 +69,9 @@ export function InvestigationProgress({ mode }: Props) {
 
       {/* Current stage */}
       <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: 8 }}>
-        {currentStage.label}…
+        {toolCallCount && toolCallCount > 0
+          ? `🔍 ${toolCallCount} tool call${toolCallCount !== 1 ? "s" : ""} — ${currentStage.label}…`
+          : `${currentStage.label}…`}
       </div>
 
       {/* Pipeline stages */}

@@ -144,7 +144,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         _logger = logger;
     }
 
-    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, bool allowConfidenceScores, CancellationToken cancellationToken)
+    public async Task<AiInvestigationResult> InvestigateAsync(Run run, Case caseUnderReview, string? modelDeploymentName, float? temperature, bool allowConfidenceScores, CancellationToken cancellationToken, IProgress<ToolInvocation>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentNullException.ThrowIfNull(caseUnderReview);
@@ -209,7 +209,9 @@ public sealed class AgentInvestigator : IAiInvestigator
                         if (Interlocked.Increment(ref callCounter) > maxCalls)
                         {
                             var maxMsg = $"Maximum tool calls ({maxCalls}) reached. Please finalize your verdict.";
-                            toolInvocations.Add(new ToolInvocation("query_expense_data", "{}", maxMsg, null, null, toolSw.ElapsedMilliseconds, false));
+                            var maxInv = new ToolInvocation("query_expense_data", "{}", maxMsg, null, null, toolSw.ElapsedMilliseconds, false);
+                            toolInvocations.Add(maxInv);
+                            progress?.Report(maxInv);
                             _logger.LogWarning("Tool call limit reached: {Max}", maxCalls);
                             return maxMsg;
                         }
@@ -234,7 +236,9 @@ public sealed class AgentInvestigator : IAiInvestigator
                         var truncatedData = resultJson.Length > 1000 ? resultJson[..1000] + "..." : resultJson;
 
                         toolSw.Stop();
-                        toolInvocations.Add(new ToolInvocation("query_expense_data", paramsJson, summary, truncatedData, null, toolSw.ElapsedMilliseconds, true));
+                        var inv = new ToolInvocation("query_expense_data", paramsJson, summary, truncatedData, null, toolSw.ElapsedMilliseconds, true);
+                        toolInvocations.Add(inv);
+                        progress?.Report(inv);
                         _logger.LogInformation("Tool query_expense_data: {Summary} in {Ms}ms", summary, toolSw.ElapsedMilliseconds);
                         return resultJson;
                     }
@@ -242,7 +246,9 @@ public sealed class AgentInvestigator : IAiInvestigator
                     {
                         toolSw.Stop();
                         var errMsg = $"Error: {ex.Message}";
-                        toolInvocations.Add(new ToolInvocation("query_expense_data", "{}", errMsg, null, null, toolSw.ElapsedMilliseconds, false));
+                        var errInv = new ToolInvocation("query_expense_data", "{}", errMsg, null, null, toolSw.ElapsedMilliseconds, false);
+                        toolInvocations.Add(errInv);
+                        progress?.Report(errInv);
                         _logger.LogWarning(ex, "Tool query_expense_data failed in {Ms}ms", toolSw.ElapsedMilliseconds);
                         return errMsg;
                     }

@@ -1,6 +1,6 @@
-import { useState } from "react";
-import type { AiInvestigationResult, ConsensusResult } from "../api/runsClient";
-import { AVAILABLE_MODELS, getPromptPreview, consensusInvestigate } from "../api/runsClient";
+import { useRef, useState } from "react";
+import type { AiInvestigationResult, ConsensusResult, ToolInvocation } from "../api/runsClient";
+import { AVAILABLE_MODELS, getPromptPreview, consensusInvestigate, streamInvestigation } from "../api/runsClient";
 import { ToolTracePanel } from "./ToolTracePanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 
@@ -22,6 +22,48 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
   const [consensusResult, setConsensusResult] = useState<ConsensusResult | null>(null);
   const [loadingConsensus, setLoadingConsensus] = useState(false);
   const [allowConfidenceScores, setAllowConfidenceScores] = useState(false);
+
+  // Streaming state (FR-017, FR-018)
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingTrace, setStreamingTrace] = useState<ToolInvocation[]>([]);
+  const [streamResult, setStreamResult] = useState<AiInvestigationResult | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const handleStreamInvestigate = () => {
+    // Cancel any in-progress stream
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setIsStreaming(true);
+    setStreamingTrace([]);
+    setStreamResult(null);
+    setStreamError(null);
+
+    streamInvestigation(
+      runId,
+      caseId,
+      { modelDeploymentName: selectedModel, temperature, allowConfidenceScores },
+      (inv) => setStreamingTrace((prev) => [...prev, inv]),
+      (result) => {
+        setStreamResult(result);
+        setIsStreaming(false);
+        // Also trigger the parent's cache invalidation via the original callback path
+        onInvestigate(selectedModel, temperature, allowConfidenceScores);
+      },
+      (err) => {
+        setStreamError(err.message);
+        setIsStreaming(false);
+        // Fallback: trigger non-streaming investigation
+        onInvestigate(selectedModel, temperature, allowConfidenceScores);
+      },
+      controller.signal,
+    );
+  };
+
+  // Use streaming result if available, otherwise fall back to parent's investigation prop
+  const displayInvestigation = streamResult ?? investigation;
 
   const handleShowPrompt = async () => {
     if (showPrompt) { setShowPrompt(false); return; }
@@ -107,16 +149,16 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
 
       {/* Action buttons — grouped together */}
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
-        {!investigation && !isLoading && (
-          <button onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>Investigate with AI</button>
+        {!displayInvestigation && !isLoading && !isStreaming && (
+          <button onClick={handleStreamInvestigate}>Investigate with AI</button>
         )}
-        {investigation?.status === "Succeeded" && (
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>
+        {displayInvestigation?.status === "Succeeded" && !isStreaming && (
+          <button className="secondary" onClick={handleStreamInvestigate}>
             Re-investigate
           </button>
         )}
-        {investigation?.status === "Unavailable" && (
-          <button className="secondary" onClick={() => onInvestigate(selectedModel, temperature, allowConfidenceScores)}>Retry</button>
+        {displayInvestigation?.status === "Unavailable" && !isStreaming && (
+          <button className="secondary" onClick={handleStreamInvestigate}>Retry</button>
         )}
         <button
           className="secondary"
@@ -140,14 +182,28 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
         independently from raw expense data, feature z-scores, employee profile, and peer comparison.
       </p>
 
-      {isLoading && <InvestigationProgress mode="single" />}
+      {(isLoading || isStreaming) && (
+        <>
+          <InvestigationProgress mode="single" toolCallCount={streamingTrace.length} />
+          {streamingTrace.length > 0 && (
+            <ToolTracePanel trace={streamingTrace} isStreaming={isStreaming} />
+          )}
+        </>
+      )}
+
+      {/* Streaming error */}
+      {streamError && !isStreaming && (
+        <p className="help" style={{ color: "var(--band-high)", marginBottom: 8 }}>
+          Streaming failed: {streamError}. Falling back to standard request.
+        </p>
+      )}
 
       {/* Single model result */}
-      {investigation?.status === "Unavailable" && (
+      {displayInvestigation?.status === "Unavailable" && !isStreaming && (
         <div style={{ marginBottom: 12 }}>
           <p>
             <span className="badge badge-medium">Unavailable</span>{" "}
-            <span className="muted">{investigation.unavailableReason ?? "unknown reason"}</span>
+            <span className="muted">{displayInvestigation.unavailableReason ?? "unknown reason"}</span>
           </p>
           <p className="help">
             The AI service was unreachable or timed out. Check that Foundry__Endpoint is configured.
@@ -155,28 +211,28 @@ export function AiVerdictPanel({ investigation, isLoading, onInvestigate, runId,
         </div>
       )}
 
-      {investigation?.status === "Succeeded" && (
+      {displayInvestigation?.status === "Succeeded" && !isStreaming && (
         <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
           <h3 style={{ fontSize: "0.95rem", margin: "0 0 8px" }}>
             Single Model Result:{" "}
             <span
               className={`badge ${
-                investigation.verdict === "Likely" ? "badge-high"
-                : investigation.verdict === "Unlikely" ? "badge-low" : "badge-medium"
+                displayInvestigation.verdict === "Likely" ? "badge-high"
+                : displayInvestigation.verdict === "Unlikely" ? "badge-low" : "badge-medium"
               }`}
             >
-              {investigation.verdict}
+              {displayInvestigation.verdict}
             </span>
           </h3>
-          <p style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: "0 0 8px" }}>{investigation.rationale}</p>
+          <p style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: "0 0 8px" }}>{displayInvestigation.rationale}</p>
           <h4 style={{ fontSize: "0.85rem", margin: "8px 0 4px" }}>Key signals</h4>
           <ul className="signals" style={{ fontSize: "0.8rem" }}>
-            {investigation.keySignals?.map((s, i) => <li key={i}>{s}</li>)}
+            {displayInvestigation.keySignals?.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
           <p style={{ fontSize: "0.85rem" }}>
-            <strong>Recommended action:</strong> {investigation.recommendedAction}
+            <strong>Recommended action:</strong> {displayInvestigation.recommendedAction}
           </p>
-          <ToolTracePanel trace={investigation.toolTrace} />
+          <ToolTracePanel trace={displayInvestigation.toolTrace} />
         </div>
       )}
 

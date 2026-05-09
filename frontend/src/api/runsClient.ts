@@ -191,6 +191,97 @@ export async function investigateCase(runId: string, caseId: string, modelDeploy
   );
 }
 
+/**
+ * Stream an investigation via SSE. Emits tool_call events as they happen,
+ * then a complete or error event with the full result (FR-017).
+ */
+export async function streamInvestigation(
+  runId: string,
+  caseId: string,
+  options: { modelDeploymentName?: string; temperature?: number; allowConfidenceScores?: boolean },
+  onToolCall: (invocation: ToolInvocation) => void,
+  onComplete: (result: AiInvestigationResult) => void,
+  onError: (err: Error) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/runs/${runId}/cases/${caseId}/investigate/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+      body: JSON.stringify(options),
+      signal,
+    });
+  } catch (err) {
+    onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+
+  if (!response.ok) {
+    onError(new Error(`${response.status} ${response.statusText}`));
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    onError(new Error("Response body is not readable"));
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let receivedTerminal = false;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Split on double newline (SSE frame boundary)
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? ""; // Last element is incomplete — keep in buffer
+
+      for (const frame of frames) {
+        if (!frame.trim()) continue;
+        const lines = frame.split("\n");
+        let eventType = "";
+        let data = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+          else if (line.startsWith("data: ")) data = line.slice(6);
+        }
+        if (!eventType || !data) continue;
+
+        try {
+          if (eventType === "tool_call") {
+            onToolCall(ToolInvocationSchema.parse(JSON.parse(data)));
+          } else if (eventType === "complete") {
+            onComplete(AiInvestigationResultSchema.parse(JSON.parse(data)));
+            receivedTerminal = true;
+          } else if (eventType === "error") {
+            const result = AiInvestigationResultSchema.parse(JSON.parse(data));
+            onError(new Error(result.unavailableReason ?? "Investigation failed"));
+            receivedTerminal = true;
+          }
+        } catch (parseErr) {
+          onError(parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
+          receivedTerminal = true;
+        }
+      }
+    }
+  } catch (err) {
+    if (signal?.aborted) return; // Clean abort
+    onError(err instanceof Error ? err : new Error(String(err)));
+    return;
+  }
+
+  if (!receivedTerminal) {
+    onError(new Error("Stream closed without terminal event (possible timeout)"));
+  }
+}
+
 export interface ConsensusArbiter {
   finalVerdict: string;
   summary: string;

@@ -145,3 +145,49 @@ optional `ToolTrace` field matching the per-model tool invocations.
 - `ConsensusResult` is NOT persisted (transient) — no storage impact.
 - `RunDataQueryResult` is NOT persisted — returned directly to the agent
   during the tool-calling loop.
+
+---
+
+## SSE Event Types (new — streaming contract)
+
+Server-Sent Events emitted by the streaming investigation endpoint
+(`POST /api/runs/{runId}/cases/{caseId}/investigate/stream`).
+
+### `tool_call` event
+
+Emitted after each tool invocation completes during the investigation.
+
+```
+event: tool_call
+data: {"toolName":"query_expense_data","parameters":"{...}","responseSummary":"47 matches, 10 returned (compact mode)","responseData":"...","reasoning":null,"latencyMs":312,"succeeded":true}
+```
+
+Payload: `ToolInvocation` JSON (same schema as the ToolTrace array entries).
+
+### `complete` event
+
+Emitted once when the investigation finishes successfully.
+
+```
+event: complete
+data: {"recordId":"...","runId":"...","status":"Succeeded","verdict":"Likely","rationale":"...","keySignals":[...],"toolTrace":[...]}
+```
+
+Payload: Full `AiInvestigationResult` JSON (includes the complete tool trace).
+
+### `error` event
+
+Emitted if the investigation fails or times out.
+
+```
+event: error
+data: {"recordId":"...","runId":"...","status":"Unavailable","unavailableReason":"timeout"}
+```
+
+Payload: `AiInvestigationResult` with `Status = Unavailable`.
+
+### Event ordering
+
+1. Zero or more `tool_call` events (as tools are invoked)
+2. Exactly one `complete` or `error` event (terminal)
+3. Stream closes after the terminal event

@@ -69,6 +69,18 @@
    All tool invocations are captured in a `ToolTrace` attached to the
    `AiInvestigationResult`. The frontend renders these in a collapsible
    "Agent Reasoning Trace" panel. Max 10 tool calls per investigation.
+
+   **SSE streaming flow (FR-017):** The browser can POST to
+   `/api/runs/{id}/cases/{caseId}/investigate/stream` for real-time progress.
+   `InvestigateCaseStreamFunction` sets `Content-Type: text/event-stream` and
+   creates an `IProgress<ToolInvocation>` callback that writes `tool_call`
+   SSE events to the response stream via `SseHelper` as each tool call
+   completes. The result is persisted before the `complete` event is written.
+   The frontend uses `fetch` + `ReadableStream` to parse SSE frames and
+   renders tool trace entries progressively in `ToolTracePanel` (with a
+   pulsing "Agent is reasoning…" indicator). Falls back to the non-streaming
+   endpoint if the SSE connection fails.
+
 4. **Consensus investigation.** Browser POSTs `/api/runs/{id}/cases/{caseId}/consensus`.
    `ConsensusCaseFunction` runs all 3 deployed models (GPT-5.4, GPT-5.3 Chat,
    GPT-5.4 Mini) in **parallel** via `Task.WhenAll`, collecting individual

@@ -30,7 +30,7 @@ public sealed class InvestigateCaseHandler
 
     public sealed record Result(AiInvestigationResult Investigation, bool Persisted, bool RunNotFound, bool CaseNotFound);
 
-    public async Task<Result> HandleAsync(InvestigateCaseRequest request, CancellationToken cancellationToken)
+    public async Task<Result> HandleAsync(InvestigateCaseRequest request, CancellationToken cancellationToken, IProgress<Domain.Entities.ToolInvocation>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -60,7 +60,7 @@ public sealed class InvestigateCaseHandler
         run.Investigations.TryGetValue(expense.RecordId, out var existing);
         var caseUnderReview = new Case(expense, employee, detection, existing);
 
-        var investigation = await _investigator.InvestigateAsync(run, caseUnderReview, request.ModelDeploymentName, request.Temperature, request.AllowConfidenceScores, cancellationToken);
+        var investigation = await _investigator.InvestigateAsync(run, caseUnderReview, request.ModelDeploymentName, request.Temperature, request.AllowConfidenceScores, cancellationToken, progress);
 
         if (investigation.Status == Domain.Enums.InvestigationStatus.Unavailable)
         {

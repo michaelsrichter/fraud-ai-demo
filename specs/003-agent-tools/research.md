@@ -152,3 +152,133 @@ Foundry__ToolboxVersion = '1'
 ## Outstanding NEEDS CLARIFICATION
 
 None. All Technical Context items are resolved.
+
+---
+
+## R6. SSE Streaming from Azure Functions (.NET Isolated Worker)
+
+**Decision**: Use `HttpResponseData` with chunked transfer encoding to
+implement Server-Sent Events from a new streaming endpoint.
+
+**Implementation pattern**:
+1. New endpoint: `POST /api/runs/{runId}/cases/{caseId}/investigate/stream`
+2. Set response headers: `Content-Type: text/event-stream`,
+   `Cache-Control: no-cache`, `Connection: keep-alive`
+3. Write SSE-formatted events (`data: {...}\n\n`) to the response body stream
+   as tool invocations complete
+4. Flush after each event to ensure immediate delivery
+5. Write a final `event: complete` with the full `AiInvestigationResult`
+6. Close the stream
+
+**Why this works**: Azure Functions .NET isolated worker supports streaming
+HTTP responses via the writable `HttpResponseData.Body` stream. Azure
+Functions Flex Consumption supports long-running HTTP requests (up to 230s
+default timeout), which exceeds our 60s investigation timeout.
+
+**Rationale**:
+- No new packages required — `HttpResponseData` with `Stream` is built-in
+- SSE is simpler than WebSocket for unidirectional server→client streaming
+- The existing non-streaming endpoint remains for backward compatibility
+
+**Alternatives considered**:
+1. **WebSocket**: More complex to set up in Azure Functions; requires
+   persistent connection management; overkill for unidirectional streaming
+2. **Polling**: Client polls a status endpoint every N seconds; simpler but
+   adds latency and doesn't meet the "real-time" clarification requirement
+3. **Azure SignalR Service**: Full-featured but adds infrastructure for a
+   single use case
+
+---
+
+## R7. SSE Event Format and Frontend Consumption
+
+**Decision**: Named SSE events with JSON payloads, consumed via `fetch` +
+`ReadableStream` (not `EventSource`, which only supports GET).
+
+**Event types**:
+- `event: tool_call\ndata: {toolInvocation JSON}\n\n` — after each tool call
+- `event: complete\ndata: {AiInvestigationResult JSON}\n\n` — final result
+- `event: error\ndata: {error JSON}\n\n` — if investigation fails
+
+**Frontend consumption**:
+```typescript
+async function streamInvestigation(
+  runId: string, caseId: string, options: InvestigateOptions,
+  onToolCall: (inv: ToolInvocation) => void,
+  onComplete: (result: AiInvestigationResult) => void,
+  onError: (err: Error) => void
+): Promise<void> {
+  const res = await fetch(`/api/runs/${runId}/cases/${caseId}/investigate/stream`, {
+    method: 'POST', body: JSON.stringify(options), headers: { 'Content-Type': 'application/json' }
+  });
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  // Parse SSE frames by splitting on \n\n boundaries
+  // Dispatch by event type
+}
+```
+
+**Rationale**: `EventSource` API only supports GET requests; our endpoint
+requires POST with a JSON body. `fetch` + `ReadableStream` is supported in
+all modern browsers and handles POST naturally.
+
+---
+
+## R8. Callback Mechanism for Tool Event Streaming
+
+**Decision**: Add `IProgress<ToolInvocation>` parameter to `InvestigateAsync`.
+
+**Pattern**:
+- `InvestigateAsync(..., IProgress<ToolInvocation>? progress = null, ...)`
+- Inside each tool delegate, after recording the invocation, call
+  `progress?.Report(invocation)`
+- SSE endpoint creates a `Progress<ToolInvocation>` that writes to the
+  response stream
+- Existing non-streaming endpoint passes `null` — no behavior change
+
+**Rationale**: `IProgress<T>` is idiomatic .NET for progress reporting.
+Optional parameter preserves backward compatibility. Thread-safe by design.
+
+**Alternatives considered**:
+1. `Action<ToolInvocation>` callback — less idiomatic
+2. `IObservable<ToolInvocation>` — requires Rx, overkill
+3. `Channel<ToolInvocation>` — good for producer-consumer but adds complexity
+
+---
+
+## R9. Consensus Investigation Streaming
+
+**Decision**: Defer consensus SSE streaming to a future iteration.
+
+The consensus endpoint runs 3 models in parallel + arbiter sequentially.
+Streaming 3 interleaved tool traces requires multiplexing with model IDs —
+significantly more complex. For this spec:
+- Single-model investigation: SSE streaming (new)
+- Consensus investigation: Return full result post-completion (existing)
+- The frontend already renders per-model tool traces in consensus results
+
+**Rationale**: Consensus is used less frequently; the audience sees individual
+model streaming first, then consensus as a reveal. Model-multiplexed SSE can
+be added later by extending the event schema with a `modelId` field.
+
+---
+
+## R10. Existing Infrastructure Completeness Audit
+
+| Requirement | Status | Gap |
+|---|---|---|
+| FR-001–FR-006: Data retrieval tool | ✅ Built | `RunDataQueryService` + in-process tool |
+| FR-007–FR-009: Code Interpreter | ✅ Built | `FoundryToolboxClient` via MCP |
+| FR-010–FR-013: Agent framework | ✅ Built | Tool registration, limits, logging |
+| FR-014–FR-016: System prompts | ✅ Built | Investigator has tools, arbiter does not |
+| FR-017: Tool trace + **streaming** | ⚠️ Gap | Trace collected but **no SSE streaming** |
+| FR-018: UI trace + **progressive** | ⚠️ Gap | `ToolTracePanel` renders post-completion only |
+| FR-019–FR-020: Consensus + Code UI | ✅ Built | Per-model traces, Python code blocks |
+| FR-021: 60s timeout | ✅ Built | `ToolAugmentedTimeoutBudget` |
+
+**Key implementation gaps**:
+1. SSE streaming endpoint for single-model investigation (FR-017)
+2. `IProgress<ToolInvocation>` callback in `AgentInvestigator` (FR-017)
+3. Frontend SSE client consuming the stream (FR-017)
+4. Progressive `ToolTracePanel` rendering during investigation (FR-018)
+5. Standalone HTTP endpoint for data retrieval tool (FR-003, future use)
