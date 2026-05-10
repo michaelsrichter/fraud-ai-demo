@@ -22,7 +22,8 @@ public class AgentInvestigatorTests
             new SimulationConfiguration(100, 10, 0.15m,
                 new PatternWeights(0.34m, 0.33m, 0.33m),
                 BandThresholds.Default, 42, "test"),
-            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(), new[] { expense }, new[] { detection },
+            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(), new[] { expense },
+            new Dictionary<string, ModelDetectionResults> { ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", new[] { detection }, new BandCounts(5, 10, 85)) },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(5, 10, 85));
     }

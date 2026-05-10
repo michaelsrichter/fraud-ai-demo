@@ -10,9 +10,15 @@ public sealed record Run
     public SimulationConfiguration Configuration { get; }
     public IReadOnlyList<Employee> Employees { get; }
     public IReadOnlyList<ExpenseRecord> Expenses { get; }
-    public IReadOnlyList<DetectionResult> DetectionResults { get; }
+    public IReadOnlyDictionary<string, ModelDetectionResults> ModelResults { get; }
     public IReadOnlyDictionary<Guid, AiInvestigationResult> Investigations { get; }
     public BandCounts BandCounts { get; }
+
+    /// <summary>Backward-compatible view: returns the primary model's detection results (first scorer).</summary>
+    public IReadOnlyList<DetectionResult> DetectionResults =>
+        ModelResults.Count > 0
+            ? ModelResults.Values.First(m => m.Status == Domain.Enums.ModelScoringStatus.Success).Results
+            : Array.Empty<DetectionResult>();
 
     public Run(
         Guid runId,
@@ -21,7 +27,7 @@ public sealed record Run
         SimulationConfiguration configuration,
         IReadOnlyList<Employee> employees,
         IReadOnlyList<ExpenseRecord> expenses,
-        IReadOnlyList<DetectionResult> detectionResults,
+        IReadOnlyDictionary<string, ModelDetectionResults> modelResults,
         IReadOnlyDictionary<Guid, AiInvestigationResult> investigations,
         BandCounts bandCounts)
     {
@@ -30,7 +36,7 @@ public sealed record Run
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(employees);
         ArgumentNullException.ThrowIfNull(expenses);
-        ArgumentNullException.ThrowIfNull(detectionResults);
+        ArgumentNullException.ThrowIfNull(modelResults);
         ArgumentNullException.ThrowIfNull(investigations);
         ArgumentNullException.ThrowIfNull(bandCounts);
 
@@ -38,8 +44,12 @@ public sealed record Run
             throw new ArgumentException($"Employees.Count must be {SimulationConfiguration.EmployeeCountMin}..{SimulationConfiguration.EmployeeCountMax}.");
         if (expenses.Count < 1 || expenses.Count > SimulationConfiguration.RecordCountCap)
             throw new ArgumentException("Expenses.Count must be 1..50000 (FR-004).");
-        if (detectionResults.Count != expenses.Count)
-            throw new ArgumentException("DetectionResults.Count must equal Expenses.Count (invariant).");
+
+        foreach (var kvp in modelResults)
+        {
+            if (kvp.Value.Status == Domain.Enums.ModelScoringStatus.Success && kvp.Value.Results.Count != expenses.Count)
+                throw new ArgumentException($"ModelResults[{kvp.Key}].Results.Count must equal Expenses.Count (invariant).");
+        }
 
         var expenseIds = new HashSet<Guid>(expenses.Count);
         foreach (var e in expenses)
@@ -60,11 +70,11 @@ public sealed record Run
         Configuration = configuration;
         Employees = employees;
         Expenses = expenses;
-        DetectionResults = detectionResults;
+        ModelResults = modelResults;
         Investigations = investigations;
         BandCounts = bandCounts;
     }
 
     public Run WithInvestigations(IReadOnlyDictionary<Guid, AiInvestigationResult> updated) =>
-        new(RunId, OwnerId, CreatedUtc, Configuration, Employees, Expenses, DetectionResults, updated, BandCounts);
+        new(RunId, OwnerId, CreatedUtc, Configuration, Employees, Expenses, ModelResults, updated, BandCounts);
 }

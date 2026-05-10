@@ -1,6 +1,8 @@
-import { useMemo } from "react";
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useMemo, useState } from "react";
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, BarChart, Bar } from "recharts";
 import type { Run } from "../api/runsClient";
+import { getModelDetectionResults, getAvailableModelIds, getModelBandCounts } from "../api/runsClient";
+import { BandChart } from "./BandChart";
 
 interface Props {
   run: Run;
@@ -28,9 +30,16 @@ function mean(arr: number[]): number {
 }
 
 export function RunSummaryStats({ run }: Props) {
+  const modelIds = useMemo(() => getAvailableModelIds(run), [run]);
+  const [activeModel, setActiveModel] = useState<string>(modelIds[0] ?? "randomized-pca");
+  const [activeTab, setActiveTab] = useState<"scatter" | "distribution" | "histogram" | "heatmap">("scatter");
+
+  const detectionResults = useMemo(() => getModelDetectionResults(run, activeModel), [run, activeModel]);
+  const bandCounts = useMemo(() => getModelBandCounts(run, activeModel), [run, activeModel]);
+
   const stats = useMemo(() => {
     const expenses = run.expenses;
-    const detMap = new Map(run.detectionResults.map((d) => [d.recordId, d]));
+    const detMap = new Map(detectionResults.map((d) => [d.recordId, d]));
     const empMap = new Map(run.employees.map((e) => [e.employeeId, e]));
 
     // Date range
@@ -107,7 +116,7 @@ export function RunSummaryStats({ run }: Props) {
       avgTxnsPerEmployee, avgMeanPerEmployee, medianMeanPerEmployee,
       catStats, vendorStats, scatterData,
     };
-  }, [run]);
+  }, [run, detectionResults]);
 
   const bandColor = (band: string) => {
     switch (band) {
@@ -136,23 +145,51 @@ export function RunSummaryStats({ run }: Props) {
         {/* Band counts inline */}
         <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
           <span style={{ fontSize: "0.8rem" }}>
-            <span style={{ color: "#ef4444", fontWeight: 600 }}>High: {run.bandCounts.high}</span>
+            <span style={{ color: "#ef4444", fontWeight: 600 }}>High: {bandCounts.high}</span>
           </span>
           <span style={{ fontSize: "0.8rem" }}>
-            <span style={{ color: "#f59e0b", fontWeight: 600 }}>Medium: {run.bandCounts.medium}</span>
+            <span style={{ color: "#f59e0b", fontWeight: 600 }}>Medium: {bandCounts.medium}</span>
           </span>
           <span style={{ fontSize: "0.8rem" }}>
-            <span style={{ color: "#22c55e", fontWeight: 600 }}>Low: {run.bandCounts.low}</span>
+            <span style={{ color: "#22c55e", fontWeight: 600 }}>Low: {bandCounts.low}</span>
           </span>
           <span className="muted" style={{ fontSize: "0.8rem" }}>
-            {run.bandCounts.high + run.bandCounts.medium} of {stats.totalRecords} flagged ({((run.bandCounts.high + run.bandCounts.medium) / stats.totalRecords * 100).toFixed(1)}%)
+            {bandCounts.high + bandCounts.medium} of {stats.totalRecords} flagged ({((bandCounts.high + bandCounts.medium) / stats.totalRecords * 100).toFixed(1)}%)
           </span>
         </div>
       </div>
 
-      {/* Scatter Plot */}
+      {/* Chart Tabs + Model Selector */}
       <div className="panel">
-        <h2 style={{ margin: "0 0 4px" }}>Anomaly Scatter Plot</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 4 }}>
+            {(["scatter", "distribution", "histogram", "heatmap"] as const).map((tab) => (
+              <button
+                key={tab}
+                className={tab === activeTab ? "" : "secondary"}
+                style={{ fontSize: "0.75rem", padding: "4px 10px", textTransform: "capitalize" }}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {modelIds.length > 1 && (
+            <select
+              value={activeModel}
+              onChange={(e) => setActiveModel(e.target.value)}
+              style={{ fontSize: "0.75rem", padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border)", background: "var(--bg-surface)", color: "var(--text)" }}
+            >
+              {modelIds.map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {activeTab === "scatter" && (
+          <>
+            <h2 style={{ margin: "0 0 4px" }}>Anomaly Scatter Plot</h2>
         <p className="help">
           Each dot is an expense record. X-axis = dollar amount, Y-axis = ML anomaly confidence score.
           Color indicates band: <span style={{ color: "#ef4444" }}>High</span>,{" "}
@@ -206,6 +243,20 @@ export function RunSummaryStats({ run }: Props) {
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
+          </>
+        )}
+
+        {activeTab === "distribution" && (
+          <BandChart counts={bandCounts} />
+        )}
+
+        {activeTab === "histogram" && (
+          <AmountHistogramInline expenses={run.expenses} detectionResults={detectionResults} />
+        )}
+
+        {activeTab === "heatmap" && (
+          <FeatureHeatmapInline detectionResults={detectionResults} />
+        )}
       </div>
 
       {/* Per-category and per-vendor breakdowns */}
@@ -258,5 +309,126 @@ function StatCard({ label, value, small }: { label: string; value: string; small
       <div style={{ fontSize: small ? "0.75rem" : "1.1rem", fontWeight: 600, color: "var(--text)" }}>{value}</div>
       <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
     </div>
+  );
+}
+
+/** Inline amount histogram — bins expense amounts, stacks flagged vs. clean */
+function AmountHistogramInline({ expenses, detectionResults }: { expenses: Run["expenses"]; detectionResults: import("../api/runsClient").DetectionResult[] }) {
+  const data = useMemo(() => {
+    const detMap = new Map(detectionResults.map((d) => [d.recordId, d]));
+    const binSize = 200;
+    const maxBin = 5000;
+    const bins: { range: string; flagged: number; clean: number }[] = [];
+    const binMap = new Map<number, { flagged: number; clean: number }>();
+
+    for (const e of expenses) {
+      const bin = Math.min(Math.floor(e.amount / binSize) * binSize, maxBin);
+      if (!binMap.has(bin)) binMap.set(bin, { flagged: 0, clean: 0 });
+      const det = detMap.get(e.recordId);
+      const isFlagged = det?.band === "High" || det?.band === "Medium";
+      if (isFlagged) binMap.get(bin)!.flagged++;
+      else binMap.get(bin)!.clean++;
+    }
+
+    const sortedBins = [...binMap.keys()].sort((a, b) => a - b);
+    for (const bin of sortedBins) {
+      const label = bin >= maxBin ? `$${(maxBin / 1000).toFixed(0)}k+` : `$${bin}-${bin + binSize}`;
+      bins.push({ range: label, ...binMap.get(bin)! });
+    }
+    return bins;
+  }, [expenses, detectionResults]);
+
+  if (data.length === 0) return <div className="muted">No data for histogram.</div>;
+  if (data.length === 1) return <div className="muted">All records fall in a single amount range — insufficient variance for a histogram.</div>;
+
+  return (
+    <>
+      <h2 style={{ margin: "0 0 4px" }}>Amount Distribution</h2>
+      <p className="help">
+        Expense amounts binned into $200 ranges. <span style={{ color: "#ef4444" }}>Flagged</span> (High+Medium) vs. <span style={{ color: "#22c55e" }}>Clean</span> (Low).
+      </p>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+          <XAxis dataKey="range" stroke="var(--chart-axis)" tick={{ fontSize: 9 }} interval={0} angle={-45} textAnchor="end" height={60} />
+          <YAxis stroke="var(--chart-axis)" tick={{ fontSize: 11 }} />
+          <Tooltip contentStyle={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text)", fontSize: "0.8rem" }} />
+          <Bar dataKey="clean" stackId="a" fill="#22c55e" name="Clean (Low)" />
+          <Bar dataKey="flagged" stackId="a" fill="#ef4444" name="Flagged (High+Medium)" />
+        </BarChart>
+      </ResponsiveContainer>
+    </>
+  );
+}
+
+/** Inline feature heatmap — mean Z-score per feature per band */
+function FeatureHeatmapInline({ detectionResults }: { detectionResults: import("../api/runsClient").DetectionResult[] }) {
+  const heatData = useMemo(() => {
+    const bands = ["High", "Medium", "Low"] as const;
+    const featureNames = new Set<string>();
+    const bandFeatures: Record<string, Record<string, number[]>> = { High: {}, Medium: {}, Low: {} };
+
+    for (const d of detectionResults) {
+      for (const f of d.contributingFeatures) {
+        featureNames.add(f.name);
+        if (!bandFeatures[d.band][f.name]) bandFeatures[d.band][f.name] = [];
+        bandFeatures[d.band][f.name].push(f.zScore);
+      }
+    }
+
+    const features = [...featureNames];
+    const rows = bands.map((band) => ({
+      band,
+      features: features.map((f) => {
+        const vals = bandFeatures[band][f] ?? [];
+        const mean = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+        return { name: f, mean };
+      }),
+    }));
+    return { features, rows };
+  }, [detectionResults]);
+
+  if (heatData.features.length === 0) return <div className="muted">No feature data for heatmap.</div>;
+
+  const maxAbs = Math.max(1, ...heatData.rows.flatMap((r) => r.features.map((f) => Math.abs(f.mean))));
+
+  function heatColor(value: number): string {
+    const norm = Math.min(1, Math.abs(value) / maxAbs);
+    if (value > 0) return `rgba(239, 68, 68, ${norm * 0.8})`; // red
+    if (value < 0) return `rgba(59, 130, 246, ${norm * 0.8})`; // blue
+    return "transparent";
+  }
+
+  return (
+    <>
+      <h2 style={{ margin: "0 0 4px" }}>Feature Contribution Heatmap</h2>
+      <p className="help">
+        Mean Z-score per feature per band. <span style={{ color: "#ef4444" }}>Red</span> = high positive (fraud signal), <span style={{ color: "#3b82f6" }}>Blue</span> = negative. Intensity shows magnitude.
+      </p>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "0.75rem" }}>
+          <thead>
+            <tr>
+              <th style={{ padding: "4px 8px", textAlign: "left" }}>Band</th>
+              {heatData.features.map((f) => (
+                <th key={f} style={{ padding: "4px 6px", textAlign: "center", fontWeight: 500 }}>{f}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {heatData.rows.map((row) => (
+              <tr key={row.band}>
+                <td style={{ padding: "4px 8px", fontWeight: 600 }}>{row.band}</td>
+                {row.features.map((f) => (
+                  <td key={f.name} style={{ padding: "4px 6px", textAlign: "center", background: heatColor(f.mean), borderRadius: 3, color: Math.abs(f.mean) / maxAbs > 0.5 ? "white" : "var(--text)" }}>
+                    {f.mean.toFixed(2)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

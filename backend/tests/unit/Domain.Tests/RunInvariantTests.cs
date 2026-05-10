@@ -36,7 +36,10 @@ public class RunInvariantTests
             cfg,
             new[] { emp }.Concat(Enumerable.Range(0, 9).Select(_ => emp)).ToList(),
             new[] { exp },
-            detectionResults: Array.Empty<DetectionResult>(),
+            new Dictionary<string, ModelDetectionResults>
+            {
+                ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", Array.Empty<DetectionResult>(), new BandCounts(0, 0, 0)),
+            },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(0, 0, 1));
 
@@ -61,7 +64,10 @@ public class RunInvariantTests
             cfg,
             Enumerable.Range(0, 10).Select(_ => emp).ToList(),
             new[] { exp },
-            new[] { det },
+            new Dictionary<string, ModelDetectionResults>
+            {
+                ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", new[] { det }, new BandCounts(0, 1, 0)),
+            },
             dict,
             new BandCounts(0, 1, 0));
 

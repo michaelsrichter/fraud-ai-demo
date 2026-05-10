@@ -47,7 +47,8 @@ public class AgentInvestigatorToolTests
         return new Run(Guid.NewGuid(), "test-owner", DateTimeOffset.UtcNow,
             new SimulationConfiguration(100, employees.Count, 0.15m,
                 new PatternWeights(0.34m, 0.33m, 0.33m), BandThresholds.Default, 42, "test"),
-            employees, expenses, detections,
+            employees, expenses,
+            new Dictionary<string, ModelDetectionResults> { ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", detections, new BandCounts(5, 10, 85)) },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(5, 10, 85));
     }

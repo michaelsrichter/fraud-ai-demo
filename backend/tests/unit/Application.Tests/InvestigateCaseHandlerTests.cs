@@ -26,7 +26,8 @@ public class InvestigateCaseHandlerTests
             new SimulationConfiguration(100, 10, 0.1m,
                 new PatternWeights(0.34m, 0.33m, 0.33m),
                 BandThresholds.Default, 42, "test"),
-            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(), new[] { expense }, new[] { detection },
+            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(), new[] { expense },
+            new Dictionary<string, ModelDetectionResults> { ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", new[] { detection }, new BandCounts(0, 1, 99)) },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(0, 1, 99));
     }
@@ -139,7 +140,9 @@ public class InvestigateCaseHandlerTests
             new SimulationConfiguration(100, 10, 0.1m,
                 new PatternWeights(0.34m, 0.33m, 0.33m),
                 BandThresholds.Default, 42, "test"),
-            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(), new[] { expense }, new[] { detection },
+            Enumerable.Range(0, 9).Select(_ => new Employee(Guid.NewGuid(), "Extra", "Sales", "IC", 1000m, new[] { "Travel" }, new[] { "AcmeAir" })).Prepend(emp).ToList(),
+            new[] { expense },
+            new Dictionary<string, ModelDetectionResults> { ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", new[] { detection }, new BandCounts(1, 1, 98)) },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(1, 1, 98));
 

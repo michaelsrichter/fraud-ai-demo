@@ -38,6 +38,8 @@ var host = new HostBuilder()
         services.AddSingleton<IEmployeeGenerator, EmployeeGenerator>();
         services.AddSingleton<IFraudInjector, FraudInjector>();
         services.AddSingleton<IAnomalyScorer, MlNetAnomalyScorer>();
+        services.AddSingleton<IAnomalyScorer, SdcaAnomalyScorer>();
+        services.AddSingleton<IAnomalyScorer, FastForestAnomalyScorer>();
         services.AddSingleton<IRunRepository, BlobRunRepository>();
         services.AddSingleton<IAiInvestigator, AgentInvestigator>();
         services.AddSingleton<IRunDataQueryService, RunDataQueryService>();

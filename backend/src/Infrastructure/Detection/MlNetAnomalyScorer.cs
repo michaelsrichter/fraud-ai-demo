@@ -3,6 +3,7 @@ using FraudDemo.Application.Banding;
 using FraudDemo.Application.Services;
 using FraudDemo.Domain.Configuration;
 using FraudDemo.Domain.Entities;
+using FraudDemo.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
 using Microsoft.ML.Data;
@@ -19,6 +20,8 @@ namespace FraudDemo.Infrastructure.Detection;
 public sealed class MlNetAnomalyScorer : IAnomalyScorer
 {
     private readonly ILogger<MlNetAnomalyScorer> _logger;
+
+    public string ModelId => ScorerModelId.RandomizedPca;
 
     public MlNetAnomalyScorer(ILogger<MlNetAnomalyScorer> logger)
     {
@@ -40,7 +43,8 @@ public sealed class MlNetAnomalyScorer : IAnomalyScorer
         IReadOnlyList<Employee> employees,
         IReadOnlyList<ExpenseRecord> expenses,
         BandThresholds thresholds,
-        int? seed)
+        int? seed,
+        Dictionary<string, double>? parameterOverrides = null)
     {
         ArgumentNullException.ThrowIfNull(employees);
         ArgumentNullException.ThrowIfNull(expenses);
@@ -58,6 +62,8 @@ public sealed class MlNetAnomalyScorer : IAnomalyScorer
 
         // RandomizedPca handles >=2 features and >=rank rows; fall back gracefully if too few rows.
         var rank = Math.Min(4, Math.Max(1, matrix.Names.Count - 1));
+        if (parameterOverrides?.TryGetValue("rank", out var rankOverride) == true)
+            rank = Math.Clamp((int)rankOverride, 1, Math.Max(1, matrix.Names.Count - 1));
         var pipeline = ml.AnomalyDetection.Trainers.RandomizedPca(
             featureColumnName: nameof(FeatureRow.Features),
             rank: rank,
