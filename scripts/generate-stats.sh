@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # generate-stats.sh — generates frontend/src/generated/stats.json
 # Run before build/deploy to embed live repo stats into the homepage.
-set -euo pipefail
+set -eu
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 OUT_DIR="$REPO_ROOT/frontend/src/generated"
@@ -11,14 +11,20 @@ mkdir -p "$OUT_DIR"
 
 cd "$REPO_ROOT"
 
-# Git stats
-FIRST_COMMIT_DATE=$(git log --reverse --format="%ai" | head -1 | cut -d' ' -f1)
+# Git stats — use --max-count and --format to avoid SIGPIPE from piping through head/awk
+FIRST_COMMIT_HASH=$(git rev-list --max-parents=0 HEAD)
+FIRST_COMMIT_DATE=$(git show -s --format='%ai' "$FIRST_COMMIT_HASH" | cut -d' ' -f1)
 TOTAL_COMMITS=$(git rev-list --count HEAD)
-DAYS_SINCE_FIRST=$(( ($(date +%s) - $(date -d "$FIRST_COMMIT_DATE" +%s)) / 86400 ))
+if [[ -n "$FIRST_COMMIT_DATE" ]]; then
+  DAYS_SINCE_FIRST=$(( ($(date +%s) - $(date -d "$FIRST_COMMIT_DATE" +%s)) / 86400 ))
+else
+  FIRST_COMMIT_DATE="unknown"
+  DAYS_SINCE_FIRST=0
+fi
 
 # Lines of code (source only, no tests/specs/infra/docs)
-BACKEND_LOC=$(find backend/src -name '*.cs' | xargs cat 2>/dev/null | wc -l)
-FRONTEND_LOC=$(find frontend/src -name '*.ts' -o -name '*.tsx' | xargs cat 2>/dev/null | wc -l)
+BACKEND_LOC=$(find backend/src -name '*.cs' -exec cat {} + 2>/dev/null | wc -l || echo 0)
+FRONTEND_LOC=$(find frontend/src \( -name '*.ts' -o -name '*.tsx' \) -exec cat {} + 2>/dev/null | wc -l || echo 0)
 TOTAL_LOC=$((BACKEND_LOC + FRONTEND_LOC))
 
 # Test counts
