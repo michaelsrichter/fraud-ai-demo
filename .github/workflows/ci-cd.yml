@@ -70,6 +70,8 @@ jobs:
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      - name: Generate project stats
+        run: bash scripts/generate-stats.sh
       - name: azd deploy
         env:
           AZURE_ENV_NAME: ${{ secrets.AZURE_ENV_NAME }}
