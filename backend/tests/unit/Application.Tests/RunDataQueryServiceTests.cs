@@ -67,7 +67,8 @@ public class RunDataQueryServiceTests
         return new Run(Guid.NewGuid(), "test-owner", DateTimeOffset.UtcNow,
             new SimulationConfiguration(expenseCount, empList.Count, 0.15m,
                 new PatternWeights(0.34m, 0.33m, 0.33m), BandThresholds.Default, 42, "test"),
-            empList, expenses, detections,
+            empList, expenses,
+            new Dictionary<string, ModelDetectionResults> { ["randomized-pca"] = ModelDetectionResults.Success("randomized-pca", detections, new BandCounts(5, 10, 85)) },
             new Dictionary<Guid, AiInvestigationResult>(),
             new BandCounts(5, 10, 85));
     }

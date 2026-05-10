@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { getCase, getRun, investigateCase, trackActivity, FEATURE_EXPLANATIONS } from "../api/runsClient";
+import { getCase, getRun, investigateCase, trackActivity, FEATURE_EXPLANATIONS, getModelDetectionResults } from "../api/runsClient";
 import { AiVerdictPanel } from "../components/AiVerdictPanel";
 
 export function CaseDetailRoute() {
@@ -33,7 +33,7 @@ export function CaseDetailRoute() {
   const employeeHistory = useMemo(() => {
     if (!runQuery.data || !caseQuery.data) return null;
     const empId = caseQuery.data.employee.employeeId;
-    const detMap = new Map(runQuery.data.detectionResults.map((d) => [d.recordId, d]));
+    const detMap = new Map(getModelDetectionResults(runQuery.data).map((d) => [d.recordId, d]));
     return runQuery.data.expenses
       .filter((e) => e.employeeId === empId)
       .map((e) => ({ expense: e, detection: detMap.get(e.recordId)! }))

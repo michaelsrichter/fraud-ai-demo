@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Run } from "../api/runsClient";
+import { getModelDetectionResults } from "../api/runsClient";
 
 interface Props {
   run: Run;
@@ -10,7 +11,7 @@ interface Props {
 export function CaseList({ run, onSelect, filter = "all" }: Props) {
   const rows = useMemo(() => {
     const empMap = new Map(run.employees.map((e) => [e.employeeId, e]));
-    const detMap = new Map(run.detectionResults.map((d) => [d.recordId, d]));
+    const detMap = new Map(getModelDetectionResults(run).map((d) => [d.recordId, d]));
     return run.expenses
       .map((e) => {
         const det = detMap.get(e.recordId)!;

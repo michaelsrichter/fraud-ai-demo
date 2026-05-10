@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import type { SimulationConfiguration } from "../api/runsClient";
+import { useMemo, useState, useEffect } from "react";
+import type { SimulationConfiguration, ScorerModelDefinition } from "../api/runsClient";
+import { fetchScorers } from "../api/runsClient";
 
 interface Props {
   initial?: Partial<SimulationConfiguration>;
@@ -56,7 +57,12 @@ function normalizeWeights(w: { thresholdGaming: number; unusualFrequency: number
 export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
   const [config, setConfig] = useState<SimulationConfiguration>({ ...DEFAULT, ...(initial ?? {}) });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [scorerModels, setScorerModels] = useState<ScorerModelDefinition[]>([]);
+  const [selectedScorers, setSelectedScorers] = useState<Record<string, Record<string, number>>>({ "randomized-pca": {} });
+
+  useEffect(() => {
+    fetchScorers().then((data) => setScorerModels(data.models)).catch(() => {});
+  }, []);
 
   const validation = useMemo(() => {
     const e: Record<string, string> = {};
@@ -86,126 +92,170 @@ export function ConfigPanel({ initial, onGenerate, isGenerating }: Props) {
       return;
     }
     setErrors({});
+    const scorers = Object.entries(selectedScorers).map(([modelId, parameters]) => ({
+      modelId,
+      parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
+    }));
     onGenerate({
       ...config,
       patternWeights: normalizeWeights(config.patternWeights),
+      scorers: scorers.length > 0 ? scorers : undefined,
     });
   }
 
   return (
     <div>
-      {/* Primary CTA */}
-      <button
-        onClick={submit}
-        disabled={!isValid || isGenerating}
-        style={{ width: "100%", padding: "10px 16px", fontSize: "0.95rem", fontWeight: 600, marginBottom: 10 }}
-      >
-        {isGenerating ? "⏳ Generating..." : "⚡ Generate New Run"}
-      </button>
-      <p className="help" style={{ marginBottom: 10 }}>
-        Creates synthetic expenses, injects fraud, and scores with ML. Pick a preset or customize below.
-      </p>
-
-      {/* Presets */}
-      <div className="preset-row">
-        {Object.keys(PRESETS).map((p) => (
-          <button key={p} type="button" onClick={() => applyPreset(p)} title={presetDescriptions[p]}>
-            {p}
-          </button>
-        ))}
+      {/* Generate button + presets — above the fold */}
+      <div className="panel" style={{ marginBottom: 16 }}>
+        <button
+          onClick={submit}
+          disabled={!isValid || isGenerating}
+          style={{ width: "100%", padding: "12px 16px", fontSize: "1rem", fontWeight: 600, marginBottom: 12 }}
+        >
+          {isGenerating ? "⏳ Generating..." : "⚡ Generate New Run"}
+        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "0.9rem" }}>Quick Presets</h3>
+            <p className="help" style={{ margin: "2px 0 0" }}>Pick a preset to auto-fill settings, or customize each section below.</p>
+          </div>
+          <div className="preset-row" style={{ margin: 0 }}>
+            {Object.keys(PRESETS).map((p) => (
+              <button key={p} type="button" onClick={() => applyPreset(p)} title={presetDescriptions[p]}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Toggle advanced config */}
-      <button
-        className="secondary"
-        style={{ width: "100%", fontSize: "0.75rem", padding: "4px 8px", marginBottom: 8 }}
-        onClick={() => setShowAdvanced(!showAdvanced)}
-      >
-        {showAdvanced ? "▾ Hide configuration" : "▸ Show configuration"}
-      </button>
+      {/* Three-column config grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
 
-      {showAdvanced && (
-        <>
-      <div className="field">
-        <label>Record count</label>
-        <span className="help">Total number of synthetic expense records to generate (1–50,000).</span>
-        <input
-          type="number"
-          min={1}
-          max={50_000}
-          value={config.recordCount}
-          onChange={(e) => setConfig({ ...config, recordCount: Number(e.target.value) })}
-        />
-        {errors.recordCount && <span className="error">{errors.recordCount}</span>}
+        {/* Column 1: Run Settings */}
+        <div className="panel">
+          <h3 style={{ margin: "0 0 8px", fontSize: "0.9rem" }}>Run Settings</h3>
+          <div className="field">
+            <label>Record count</label>
+            <span className="help">Total synthetic expense records to generate (1–50,000).</span>
+            <input
+              type="number"
+              min={1}
+              max={50_000}
+              value={config.recordCount}
+              onChange={(e) => setConfig({ ...config, recordCount: Number(e.target.value) })}
+            />
+            {errors.recordCount && <span className="error">{errors.recordCount}</span>}
+          </div>
+          <div className="field">
+            <label>Fraud intensity: {config.intensity.toFixed(2)}</label>
+            <span className="help">Fraction of records with injected fraud (0 = none, 1 = all).</span>
+            <input
+              type="range" min={0} max={1} step={0.01}
+              value={config.intensity}
+              onChange={(e) => setConfig({ ...config, intensity: Number(e.target.value) })}
+            />
+            {errors.intensity && <span className="error">{errors.intensity}</span>}
+          </div>
+        </div>
+
+        {/* Column 2: Fraud Patterns */}
+        <div className="panel">
+          <h3 style={{ margin: "0 0 8px", fontSize: "0.9rem" }}>Fraud Pattern Weights</h3>
+          <p className="help" style={{ marginBottom: 8 }}>Mix of three fraud patterns. Auto-normalized to sum to 1.0.</p>
+          <div className="field">
+            <label>Threshold gaming: {config.patternWeights.thresholdGaming.toFixed(2)}</label>
+            <span className="help">Expenses just under the $1,000 approval threshold.</span>
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={config.patternWeights.thresholdGaming}
+              onChange={(e) => setConfig({ ...config, patternWeights: { ...config.patternWeights, thresholdGaming: Number(e.target.value) } })}
+            />
+          </div>
+          <div className="field">
+            <label>Unusual frequency: {config.patternWeights.unusualFrequency.toFixed(2)}</label>
+            <span className="help">Submissions at odd times — weekends, late hours.</span>
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={config.patternWeights.unusualFrequency}
+              onChange={(e) => setConfig({ ...config, patternWeights: { ...config.patternWeights, unusualFrequency: Number(e.target.value) } })}
+            />
+          </div>
+          <div className="field">
+            <label>Vendor anomaly: {config.patternWeights.vendorAnomaly.toFixed(2)}</label>
+            <span className="help">Payments to suspicious shell-company vendors.</span>
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={config.patternWeights.vendorAnomaly}
+              onChange={(e) => setConfig({ ...config, patternWeights: { ...config.patternWeights, vendorAnomaly: Number(e.target.value) } })}
+            />
+            {errors.patternWeights && <span className="error">{errors.patternWeights}</span>}
+          </div>
+        </div>
+
+        {/* Column 3: Scoring Models */}
+        <div className="panel">
+          <h3 style={{ margin: "0 0 8px", fontSize: "0.9rem" }}>Scoring Models</h3>
+          <p className="help" style={{ marginBottom: 8 }}>Select one or more ML models. Each scores independently.</p>
+          {scorerModels.map((model) => {
+            const isSelected = model.modelId in selectedScorers;
+            return (
+              <div key={model.modelId} style={{ marginBottom: 10, padding: "8px 10px", background: isSelected ? "var(--bg)" : "transparent", borderRadius: 6, border: isSelected ? "1px solid var(--border)" : "1px solid transparent" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      const next = { ...selectedScorers };
+                      if (e.target.checked) next[model.modelId] = {};
+                      else delete next[model.modelId];
+                      if (Object.keys(next).length > 0) setSelectedScorers(next);
+                    }}
+                  />
+                  <span style={{ fontWeight: 500, fontSize: "0.85rem" }}>{model.displayName}</span>
+                </label>
+                <span className="help" style={{ marginLeft: 22, display: "block", fontSize: "0.72rem" }}>{model.description}</span>
+                {isSelected && model.parameters.length > 0 && (
+                  <div style={{ marginLeft: 22, marginTop: 6 }}>
+                    {model.parameters.map((p) => (
+                      <div key={p.name} className="field" style={{ marginBottom: 6 }}>
+                        <label style={{ fontSize: "0.75rem" }}>{p.displayName}: {(selectedScorers[model.modelId]?.[p.name] ?? p.defaultValue).toFixed(p.dataType === "Int" ? 0 : 2)}</label>
+                        <span className="help" style={{ fontSize: "0.68rem", display: "block", marginBottom: 2 }}>{p.description}</span>
+                        <input
+                          type="range"
+                          min={p.min ?? 0}
+                          max={p.max ?? 100}
+                          step={p.dataType === "Int" ? 1 : 0.01}
+                          value={selectedScorers[model.modelId]?.[p.name] ?? p.defaultValue}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setSelectedScorers({
+                              ...selectedScorers,
+                              [model.modelId]: { ...selectedScorers[model.modelId], [p.name]: val },
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="field">
-        <label>Intensity: {config.intensity.toFixed(2)}</label>
-        <span className="help">
-          Fraction of records that will have injected fraud (0 = none, 1 = all).
-          Higher values make the fraud more obvious in the chart.
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={config.intensity}
-          onChange={(e) => setConfig({ ...config, intensity: Number(e.target.value) })}
-        />
-        {errors.intensity && <span className="error">{errors.intensity}</span>}
+      {/* Generate button (repeated) + prior runs link */}
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+        <button
+          onClick={submit}
+          disabled={!isValid || isGenerating}
+          style={{ width: "100%", padding: "12px 16px", fontSize: "1rem", fontWeight: 600 }}
+        >
+          {isGenerating ? "⏳ Generating..." : "⚡ Generate New Run"}
+        </button>
+        <a href="#prior-runs" style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)" }}>↓ View prior runs</a>
       </div>
-
-      <h2 style={{ fontSize: "0.9rem", marginTop: 16 }}>Fraud pattern weights</h2>
-      <p className="help">
-        Control the mix of three fraud patterns. Weights are auto-normalized to sum to 1.0 before generation.
-      </p>
-
-      <div className="field">
-        <label>Threshold gaming: {config.patternWeights.thresholdGaming.toFixed(2)}</label>
-        <span className="help">Expenses just under the $1,000 approval threshold — a common evasion tactic.</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={config.patternWeights.thresholdGaming}
-          onChange={(e) =>
-            setConfig({ ...config, patternWeights: { ...config.patternWeights, thresholdGaming: Number(e.target.value) } })
-          }
-        />
-      </div>
-      <div className="field">
-        <label>Unusual frequency: {config.patternWeights.unusualFrequency.toFixed(2)}</label>
-        <span className="help">Submissions at odd times — weekends, late hours — when oversight is lower.</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={config.patternWeights.unusualFrequency}
-          onChange={(e) =>
-            setConfig({ ...config, patternWeights: { ...config.patternWeights, unusualFrequency: Number(e.target.value) } })
-          }
-        />
-      </div>
-      <div className="field">
-        <label>Vendor anomaly: {config.patternWeights.vendorAnomaly.toFixed(2)}</label>
-        <span className="help">Payments to suspicious shell-company vendors not seen in normal activity.</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={config.patternWeights.vendorAnomaly}
-          onChange={(e) =>
-            setConfig({ ...config, patternWeights: { ...config.patternWeights, vendorAnomaly: Number(e.target.value) } })
-          }
-        />
-        {errors.patternWeights && <span className="error">{errors.patternWeights}</span>}
-      </div>
-        </>
-      )}
     </div>
   );
 }

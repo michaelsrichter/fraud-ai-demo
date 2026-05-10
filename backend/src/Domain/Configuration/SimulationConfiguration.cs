@@ -16,6 +16,7 @@ public sealed record SimulationConfiguration
     public BandThresholds Thresholds { get; }
     public int? Seed { get; }
     public string ModelDeploymentName { get; }
+    public IReadOnlyList<ScorerSelection> Scorers { get; }
 
     public SimulationConfiguration(
         int recordCount,
@@ -24,7 +25,8 @@ public sealed record SimulationConfiguration
         PatternWeights patternWeights,
         BandThresholds thresholds,
         int? seed,
-        string modelDeploymentName)
+        string modelDeploymentName,
+        IReadOnlyList<ScorerSelection>? scorers = null)
     {
         if (recordCount < 1 || recordCount > RecordCountCap)
             throw new ArgumentOutOfRangeException(nameof(recordCount), recordCount, $"RecordCount must be 1..{RecordCountCap} (FR-004).");
@@ -44,6 +46,10 @@ public sealed record SimulationConfiguration
         Thresholds = thresholds;
         Seed = seed;
         ModelDeploymentName = modelDeploymentName;
+        Scorers = scorers ?? new List<ScorerSelection>
+        {
+            new(Domain.Enums.ScorerModelId.RandomizedPca, new Dictionary<string, double>()),
+        };
     }
 
     public static SimulationConfiguration CreateDefault(string modelDeploymentName) =>

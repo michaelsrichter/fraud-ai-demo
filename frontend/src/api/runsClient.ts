@@ -25,6 +25,10 @@ export const SimulationConfigurationSchema = z.object({
   patternWeights: PatternWeightsSchema,
   thresholds: BandThresholdsSchema.optional(),
   seed: z.number().int().nullable().optional(),
+  scorers: z.array(z.object({
+    modelId: z.string(),
+    parameters: z.record(z.number()).optional(),
+  })).optional(),
 });
 export type SimulationConfiguration = z.infer<typeof SimulationConfigurationSchema>;
 
@@ -97,6 +101,15 @@ export const AiInvestigationResultSchema = z.object({
 });
 export type AiInvestigationResult = z.infer<typeof AiInvestigationResultSchema>;
 
+export const ModelDetectionResultsSchema = z.object({
+  modelId: z.string(),
+  status: z.enum(["Success", "Error"]),
+  errorMessage: z.string().nullable().optional(),
+  results: z.array(DetectionResultSchema),
+  bandCounts: BandCountsSchema,
+});
+export type ModelDetectionResults = z.infer<typeof ModelDetectionResultsSchema>;
+
 export const RunSchema = z.object({
   runId: z.string(),
   createdUtc: z.string(),
@@ -106,10 +119,52 @@ export const RunSchema = z.object({
   bandCounts: BandCountsSchema,
   employees: z.array(EmployeeSchema),
   expenses: z.array(ExpenseRecordSchema),
-  detectionResults: z.array(DetectionResultSchema),
+  // Support both legacy flat array and new dictionary
+  detectionResults: z.array(DetectionResultSchema).optional(),
+  modelResults: z.record(ModelDetectionResultsSchema).optional(),
   investigations: z.record(AiInvestigationResultSchema).optional(),
 });
 export type Run = z.infer<typeof RunSchema>;
+
+/** Get the detection results for a given model (or the primary/first model). */
+export function getModelDetectionResults(run: Run, modelId?: string): DetectionResult[] {
+  if (run.modelResults) {
+    const id = modelId ?? Object.keys(run.modelResults)[0];
+    const m = id ? run.modelResults[id] : undefined;
+    if (m?.status === "Success") return m.results;
+    return [];
+  }
+  return run.detectionResults ?? [];
+}
+
+/** Get available model IDs from a run. */
+export function getAvailableModelIds(run: Run): string[] {
+  if (run.modelResults) return Object.keys(run.modelResults);
+  return ["randomized-pca"];
+}
+
+/** Get band counts for a specific model. */
+export function getModelBandCounts(run: Run, modelId?: string): BandCounts {
+  if (run.modelResults) {
+    const id = modelId ?? Object.keys(run.modelResults)[0];
+    const m = id ? run.modelResults[id] : undefined;
+    if (m?.status === "Success") return m.bandCounts;
+  }
+  return run.bandCounts;
+}
+
+export type ScorerModelDefinition = {
+  modelId: string;
+  displayName: string;
+  description: string;
+  parameters: { name: string; displayName: string; description: string; dataType: string; defaultValue: number; min?: number; max?: number }[];
+};
+
+export async function fetchScorers(): Promise<{ models: ScorerModelDefinition[] }> {
+  const res = await fetch(`${API_BASE}/scorers`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
 
 export const RunSummarySchema = z.object({
   runId: z.string(),

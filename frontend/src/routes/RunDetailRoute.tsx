@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { deleteRun, getRun } from "../api/runsClient";
+import { deleteRun, getRun, getModelDetectionResults } from "../api/runsClient";
 import { RunSummaryStats } from "../components/RunSummaryStats";
 import { CaseList } from "../components/CaseList";
 import { HowItWorksPanel } from "../components/HowItWorksPanel";
@@ -27,10 +27,11 @@ export function RunDetailRoute() {
   });
 
   const run = runQuery.data;
+  const detectionResults = run ? getModelDetectionResults(run) : [];
   const bandCounts = run ? {
-    high: run.detectionResults.filter(d => d.band === "High").length,
-    medium: run.detectionResults.filter(d => d.band === "Medium").length,
-    low: run.detectionResults.filter(d => d.band === "Low").length,
+    high: detectionResults.filter(d => d.band === "High").length,
+    medium: detectionResults.filter(d => d.band === "Medium").length,
+    low: detectionResults.filter(d => d.band === "Low").length,
   } : null;
   const investigatedCount = run ? Object.keys(run.investigations ?? {}).length : 0;
 

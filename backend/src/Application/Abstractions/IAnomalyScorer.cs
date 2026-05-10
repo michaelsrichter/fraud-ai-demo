@@ -5,10 +5,13 @@ namespace FraudDemo.Application.Abstractions;
 
 public interface IAnomalyScorer
 {
-    /// <summary>Scores every expense in <paramref name="run"/> and returns one DetectionResult per record (index-aligned).</summary>
+    string ModelId { get; }
+
+    /// <summary>Scores every expense in <paramref name="expenses"/> and returns one DetectionResult per record (index-aligned).</summary>
     IReadOnlyList<DetectionResult> Score(
         IReadOnlyList<Employee> employees,
         IReadOnlyList<ExpenseRecord> expenses,
         BandThresholds thresholds,
-        int? seed);
+        int? seed,
+        Dictionary<string, double>? parameterOverrides = null);
 }
