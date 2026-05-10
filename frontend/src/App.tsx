@@ -6,7 +6,6 @@ import { CaseDetailRoute } from "./routes/CaseDetailRoute";
 import { HomePage } from "./routes/HomePage";
 import { AdminRoute } from "./routes/AdminRoute";
 import { TopNav } from "./components/TopNav";
-import { ComingSoonLab } from "./components/ComingSoonLab";
 import { CreateProfileForm } from "./components/CreateProfileForm";
 import { Footer } from "./components/Footer";
 import { getProfile, type UserProfile } from "./lib/userProfile";
@@ -66,20 +65,6 @@ export function App() {
         {/* Backward compat redirects */}
         <Route path="/runs" element={<Navigate to="/labs/expenses" replace />} />
         <Route path="/runs/:runId" element={<Navigate to="/labs/expenses" replace />} />
-
-        {/* Coming soon labs */}
-        <Route path="/labs/insurance" element={
-          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
-            <ComingSoonLab title="Insurance Claim Fraud" icon="🏥"
-              description="Detect fraudulent insurance claims: inflated damage estimates, suspicious claim timing, phantom injuries, and staged accidents." />
-          </LabGuard>
-        } />
-        <Route path="/labs/payments" element={
-          <LabGuard profile={profile} onProfileCreated={handleProfileCreated}>
-            <ComingSoonLab title="Payment Fraud Detection" icon="💳"
-              description="Classic credit card fraud detection: unusual transaction amounts, geographic anomalies, velocity checks, and merchant category deviations." />
-          </LabGuard>
-        } />
 
         {/* Info pages — redirect old how-it-works to expenses lab */}
         <Route path="/how-it-works" element={<Navigate to="/labs/expenses" replace />} />

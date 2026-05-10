@@ -1,0 +1,13 @@
+{
+  "firstCommitDate": "2026-05-06",
+  "daysSinceFirstCommit": 4,
+  "totalCommits": 39,
+  "linesOfCode": 9535,
+  "backendLoc": 4882,
+  "frontendLoc": 4653,
+  "totalTests": 165,
+  "backendTests": 113,
+  "frontendTests": 52,
+  "specCount": 5,
+  "generatedAt": "2026-05-10T04:35:37Z"
+}

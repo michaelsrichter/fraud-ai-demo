@@ -16,8 +16,6 @@ function getInitialTheme(): "dark" | "light" {
 const NAV_ITEMS = [
   { path: "/", label: "Home" },
   { path: "/labs/expenses", label: "Expenses" },
-  { path: "/labs/insurance", label: "Insurance", badge: "Soon" },
-  { path: "/labs/payments", label: "Payments", badge: "Soon" },
 ];
 
 export function TopNav({ profile }: Props) {
@@ -65,19 +63,6 @@ export function TopNav({ profile }: Props) {
               }}
             >
               {item.label}
-              {item.badge && (
-                <span style={{
-                  marginLeft: 4,
-                  fontSize: "0.6rem",
-                  padding: "1px 5px",
-                  borderRadius: 999,
-                  background: "var(--btn-secondary)",
-                  color: "white",
-                  verticalAlign: "middle",
-                }}>
-                  {item.badge}
-                </span>
-              )}
             </Link>
           );
         })}
