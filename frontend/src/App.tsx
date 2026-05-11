@@ -5,6 +5,7 @@ import { RunDetailRoute } from "./routes/RunDetailRoute";
 import { CaseDetailRoute } from "./routes/CaseDetailRoute";
 import { HomePage } from "./routes/HomePage";
 import { AdminRoute } from "./routes/AdminRoute";
+import { BuildStoryRoute } from "./routes/BuildStoryRoute";
 import { TopNav } from "./components/TopNav";
 import { CreateProfileForm } from "./components/CreateProfileForm";
 import { Footer } from "./components/Footer";
@@ -68,6 +69,9 @@ export function App() {
 
         {/* Info pages — redirect old how-it-works to expenses lab */}
         <Route path="/how-it-works" element={<Navigate to="/labs/expenses" replace />} />
+
+        {/* Story */}
+        <Route path="/story" element={<BuildStoryRoute />} />
 
         {/* Admin */}
         <Route path="/admin" element={<AdminRoute />} />

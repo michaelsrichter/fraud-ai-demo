@@ -145,6 +145,9 @@ export function HomePage() {
             This project demonstrates how modern AI-powered fraud detection systems can be rapidly
             prototyped using agentic coding workflows, Azure AI services, and open-source ML libraries.
           </p>
+          <Link to="/story" style={{ fontSize: "0.8rem", padding: "4px 10px", borderRadius: 4, background: "var(--bg)", textDecoration: "none", color: "var(--text)", display: "inline-block", marginTop: 8 }}>
+            📖 Read how this was built in 4 days
+          </Link>
         </div>
         <div className="panel">
           <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Open Source</h2>

@@ -16,6 +16,7 @@ function getInitialTheme(): "dark" | "light" {
 const NAV_ITEMS = [
   { path: "/", label: "Home" },
   { path: "/labs/expenses", label: "Expenses" },
+  { path: "/story", label: "Our Story" },
 ];
 
 export function TopNav({ profile }: Props) {

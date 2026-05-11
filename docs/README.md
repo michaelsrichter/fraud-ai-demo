@@ -2,6 +2,7 @@
 
 This folder hosts project documentation per Constitution Principle VII.
 
+- [build-story.md](./build-story.md) — how this app was built in 4 days with agentic coding (presentation-ready narrative for fraud professionals)
 - [architecture.md](./architecture.md) — system diagram, data-flow, identity & RBAC
 - [setup.md](./setup.md) — local development workflow (Azurite + `func start` + Vite)
 - [deployment.md](./deployment.md) — `azd up` walkthrough, OIDC pipeline, teardown
