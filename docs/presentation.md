@@ -175,15 +175,84 @@ Every feature started as a description of a fraud pattern, an investigation work
 
 ---
 
-## Lesson 2: AI Gives You a Second Opinion at Machine Speed
+## Lesson 2: AI Doesn't Replace Traditional ML — It Picks Up Where ML Leaves Off
 
-### It's a force multiplier for triage, not a replacement for judgment.
+### Generative AI has a lot of hype right now. But it is not a replacement for traditional machine learning models.
 
 ---
 
-### What the AI Investigator Actually Does
+### Two Different Tools for Two Different Jobs
 
-The AI receives the same signals a human analyst would review:
+Fraud detection is fundamentally about finding anomalies. Traditional ML models are purpose-built for exactly this — and they do it fast and cheap.
+
+| | ML Scoring Models | GenAI Investigators |
+|---|---|---|
+| **Purpose** | Score every record for anomalies | Investigate ambiguous cases with reasoning |
+| **Speed** | 5,000 records in < 2 seconds | 1 case in 10–60 seconds |
+| **Cost** | Fractions of a cent per record | $0.02–$0.15 per investigation |
+| **Strengths** | Scale, consistency, deterministic | Reasoning, context, natural language |
+| **Limitations** | No reasoning — just a score | Slow, expensive, non-deterministic |
+
+---
+
+### The Escalation Pipeline
+
+ML handles the volume. AI handles the ambiguity. This is the same pattern your team already uses — automated scoring triages the workload, and human examiners focus on the cases that need judgment.
+
+```
+┌───────────────┐     ┌────────────────┐     ┌─────────────────────┐
+│ All 5,000       │     │ ML Scoring       │     │ Band Assignment       │
+│ Expense Records │ ─▶│ (< 2 seconds)    │ ─▶│                       │
+│                 │     │ Fast, cheap,     │     │ ✅ Low risk:  80-90%    │
+│                 │     │ deterministic    │     │ 🚨 High risk:  2-5%    │
+└───────────────┘     └────────────────┘     │ ❓ Medium:     5-15%   │
+                                            └─────────┬───────────┘
+                                                      │
+                                              ┌───────▼─────────┐
+                                              │ AI Investigators  │
+                                              │ (10-60s per case) │
+                                              │ Reasoning + tools │
+                                              └───────────────────┘
+```
+
+In this demo, I'm using pre-built generic anomaly detectors from ML.NET. Training a domain-specific fraud model takes real effort — but once it's built, it deploys and scales instantly. That model-building process is outside this demo's scope. What this demo shows is: **when that ML model doesn't have a conclusive result, we bring in AI investigators with reasoning skills and tools** — instead of immediately escalating to a human fraud examiner.
+
+You can use Microsoft's machine learning capabilities (Azure Machine Learning) to build and train domain-specific models, but that's a separate conversation.
+
+---
+
+### ML Scoring: Fast, Cheap, Deterministic
+
+Here's the actual scoring code — the ML model trains and scores all 5,000 records in a single pass:
+
+> [`MlNetAnomalyScorer.cs` — Randomized PCA (line 70)](https://github.com/michaelsrichter/fraud-ai-demo/blob/main/backend/src/Infrastructure/Detection/MlNetAnomalyScorer.cs#L70-L80)
+
+```csharp
+var pipeline = ml.AnomalyDetection.Trainers.RandomizedPca(
+    featureColumnName: "Features",
+    rank: rank,
+    ensureZeroMean: true,
+    seed: seed);
+
+var model = pipeline.Fit(data);          // Train
+var transformed = model.Transform(data); // Score all records
+```
+
+That's it. A few lines of code, and every expense record gets a confidence score. The banding logic then sorts them into high / medium / low risk:
+
+> [`BandingHelpers.cs` — Band Assignment (line 8)](https://github.com/michaelsrichter/fraud-ai-demo/blob/main/backend/src/Application/Banding/Banding.cs#L8-L13)
+
+```csharp
+if (confidence >= threshold.High) return "High";   // Auto-flag
+if (confidence >= threshold.Low)  return "Medium"; // Needs investigation
+return "Low";                                       // Normal
+```
+
+---
+
+### When ML Can't Decide: The AI Investigator Steps In
+
+The medium-confidence cases — the ones ML scored as ambiguous — are where you'd normally escalate to a human fraud examiner. Instead, we bring in AI investigators that receive the same signals an analyst would review:
 
 - **Spending patterns** — Amount relative to category averages and employee history
 - **Vendor analysis** — How common is this vendor? Does the employee use it exclusively?
@@ -337,12 +406,15 @@ The proof-of-concept your team validates on Tuesday can be deployed to a governe
 
 ### Model Flexibility
 
-**AI Models** — Choose from multiple models in AI Foundry:
-- GPT-5.4 (highest capability)
-- GPT-5.3 Chat (balanced)
-- GPT-5.4 Mini (fastest, lowest cost)
+**AI Models** — When you build on AI Foundry, you can choose from many model providers:
+- **OpenAI** — GPT-5.4, GPT-5.3, GPT-5.4 Mini (used in this demo)
+- **Anthropic** — Claude models
+- **Meta** — Llama models
+- **Microsoft** — Phi models
+- **xAI** — Grok models
+- And more — the platform is model-agnostic
 
-Run them side-by-side. Compare reasoning quality vs. cost. The Consensus mode uses all three simultaneously.
+This demo uses the latest GPT models from OpenAI, but the architecture doesn't lock you in. Switch models without changing application code.
 
 **ML Models** — Three different anomaly detection approaches:
 - Randomized PCA (unsupervised — no labels needed)

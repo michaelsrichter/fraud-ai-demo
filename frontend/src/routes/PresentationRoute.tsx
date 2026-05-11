@@ -21,6 +21,8 @@ const SLIDES: Slide[] = [
   { id: "timeline", label: "Timeline" },
   { id: "lesson1-why", label: "Why It Matters" },
   { id: "lesson2", label: "Lesson 2" },
+  { id: "ml-vs-ai", label: "ML vs GenAI" },
+  { id: "ml-scoring-code", label: "ML Scoring" },
   { id: "ai-signals", label: "AI Signals" },
   { id: "four-modes", label: "4 Modes" },
   { id: "debate-prompts", label: "Debate Prompts" },
@@ -430,17 +432,129 @@ if (rng.NextDouble() < 0.25)
       {/* ════════════ LESSON 2: SECOND OPINION ════════════ */}
       <section id="lesson2" style={S.slide}>
         <div style={S.lessonBadge("#d97706")}>LESSON 2</div>
-        <h2 style={S.h2}>AI Gives You a Second Opinion at Machine Speed</h2>
+        <h2 style={S.h2}>AI Doesn't Replace Traditional ML — It Picks Up Where ML Leaves Off</h2>
         <p style={{ ...S.sub, fontSize: "1.2rem" }}>
-          It's a force multiplier for triage, not a replacement for judgment.
+          Generative AI has a lot of hype right now. But it is not a replacement
+          for traditional machine learning models.
         </p>
+      </section>
+
+      {/* ── ML vs GenAI ── */}
+      <section id="ml-vs-ai" style={S.slideCompact}>
+        <h3 style={S.h3}>Two Different Tools for Two Different Jobs</h3>
+        <p style={S.body}>
+          Fraud detection is fundamentally about finding anomalies. Traditional ML models
+          are purpose-built for exactly this — and they do it fast and cheap.
+        </p>
+
+        {/* Comparison table */}
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}></th>
+              <th style={{ ...S.th, color: "var(--band-low)" }}>ML Scoring Models</th>
+              <th style={{ ...S.th, color: "var(--band-medium)" }}>GenAI Investigators</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Purpose</td><td style={S.td}>Score every record for anomalies</td><td style={S.td}>Investigate ambiguous cases with reasoning</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Speed</td><td style={S.td}>5,000 records in &lt; 2 seconds</td><td style={S.td}>1 case in 10–60 seconds</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Cost</td><td style={S.td}>Fractions of a cent per record</td><td style={S.td}>$0.02–$0.15 per investigation</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Strengths</td><td style={S.td}>Scale, consistency, deterministic</td><td style={S.td}>Reasoning, context, natural language</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Limitations</td><td style={S.td}>No reasoning — just a score</td><td style={S.td}>Slow, expensive, non-deterministic</td></tr>
+          </tbody>
+        </table>
+
+        {/* Escalation pipeline diagram */}
+        <h4 style={{ ...S.h3, marginTop: 24, fontSize: "1rem" }}>The Escalation Pipeline</h4>
+        <p style={S.body}>
+          ML handles the volume. AI handles the ambiguity. This is the same pattern
+          your team already uses — automated scoring triages the workload, and human
+          examiners focus on the cases that need judgment.
+        </p>
+        <div style={{
+          display: "flex", alignItems: "stretch", justifyContent: "center",
+          flexWrap: "wrap", gap: 0, marginTop: 16,
+        }}>
+          <PipelineStep
+            color="var(--band-low)" icon="📥" title="All 5,000 Records"
+            desc="Raw expense data" width={140}
+          />
+          <PipelineArrow label="ML scores all" />
+          <PipelineStep
+            color="var(--band-low)" icon="⚡" title="ML Scoring"
+            desc="Fast, cheap, deterministic" sub="< 2 seconds" width={150}
+          />
+          <PipelineArrow label="Bands assigned" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, justifyContent: "center" }}>
+            <PipelineBranch color="var(--band-low)" label="✅ Low risk (80–90%)" desc="No action needed" />
+            <PipelineBranch color="var(--band-high)" label="🚨 High risk (2–5%)" desc="Auto-flag for review" />
+            <PipelineBranch color="var(--band-medium)" label="❓ Medium / unclear (5–15%)" desc="The hard cases" highlight />
+          </div>
+          <PipelineArrow label="Escalate" />
+          <PipelineStep
+            color="var(--band-medium)" icon="🧠" title="AI Investigators"
+            desc="Reasoning, tools, evidence" sub="10–60 sec each" width={160}
+          />
+        </div>
+        <p style={{ ...S.body, marginTop: 16 }}>
+          In this demo, I'm using pre-built generic anomaly detectors from ML.NET.
+          Training a domain-specific fraud model takes real effort — but once it's
+          built, it deploys and scales instantly. That model-building process is
+          outside this demo's scope. What this demo shows is:{" "}
+          <strong>when that ML model doesn't have a conclusive result, we bring in
+          AI investigators with reasoning skills and tools</strong> — instead of
+          immediately escalating to a human fraud examiner.
+        </p>
+      </section>
+
+      {/* ── ML Scoring Code ── */}
+      <section id="ml-scoring-code" style={S.slideCompact}>
+        <h3 style={S.h3}>ML Scoring: Fast, Cheap, Deterministic</h3>
+        <p style={S.body}>
+          Here's the actual scoring code — the ML model trains and scores all 5,000
+          records in a single pass:
+        </p>
+        <div style={S.mono}>
+{`// From MlNetAnomalyScorer.cs — Randomized PCA
+var pipeline = ml.AnomalyDetection.Trainers.RandomizedPca(
+    featureColumnName: "Features",
+    rank: rank,
+    ensureZeroMean: true,
+    seed: seed);
+
+var model = pipeline.Fit(data);     // Train
+var transformed = model.Transform(data); // Score all records`}
+        </div>
+        <p style={S.body}>
+          That's it. A few lines of code, and every expense record gets a confidence score.
+          The banding logic then sorts them into high / medium / low risk:
+        </p>
+        <div style={S.mono}>
+{`// From BandingHelpers.cs
+if (confidence >= threshold.High) return "High";   // Auto-flag
+if (confidence >= threshold.Low)  return "Medium"; // Needs investigation
+return "Low";                                       // Normal`}
+        </div>
+        <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+          <a href="https://github.com/michaelsrichter/fraud-ai-demo/blob/main/backend/src/Infrastructure/Detection/MlNetAnomalyScorer.cs#L70-L80"
+            target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.78rem", color: "var(--link)" }}>
+            📂 MlNetAnomalyScorer.cs on GitHub →
+          </a>
+          <a href="https://github.com/michaelsrichter/fraud-ai-demo/blob/main/backend/src/Application/Banding/Banding.cs#L8-L13"
+            target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.78rem", color: "var(--link)" }}>
+            📂 BandingHelpers.cs on GitHub →
+          </a>
+        </div>
       </section>
 
       {/* ── AI Signals ── */}
       <section id="ai-signals" style={S.slideCompact}>
-        <h3 style={S.h3}>What the AI Investigator Actually Does</h3>
+        <h3 style={S.h3}>When ML Can't Decide: The AI Investigator Steps In</h3>
         <p style={S.body}>
-          The AI receives the same signals a human analyst would review:
+          The medium-confidence cases — the ones ML scored as ambiguous — are where
+          you'd normally escalate to a human fraud examiner. Instead, we bring in
+          AI investigators that receive the same signals an analyst would review:
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
           <SignalCard icon="💰" title="Spending Patterns" desc="Amount relative to category averages and employee history" />
@@ -703,12 +817,15 @@ assignments = [
           <div className="panel">
             <h4 style={{ margin: "0 0 8px", fontSize: "0.95rem" }}>AI Models — AI Foundry</h4>
             <p className="muted" style={{ fontSize: "0.82rem", lineHeight: 1.6, margin: "0 0 8px" }}>
-              Choose from multiple models. Run them side-by-side. Compare reasoning quality vs. cost.
+              Build on AI Foundry and choose from many model providers.
+              This demo uses OpenAI GPT models, but the architecture doesn't lock you in.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <ModelRow name="GPT-5.4" role="Highest capability" />
-              <ModelRow name="GPT-5.3 Chat" role="Balanced" />
-              <ModelRow name="GPT-5.4 Mini" role="Fastest, lowest cost" />
+              <ModelRow name="OpenAI (GPT-5.4, 5.3)" role="Used in this demo" />
+              <ModelRow name="Anthropic (Claude)" role="Available" />
+              <ModelRow name="Meta (Llama)" role="Available" />
+              <ModelRow name="Microsoft (Phi)" role="Available" />
+              <ModelRow name="xAI (Grok)" role="Available" />
             </div>
           </div>
           <div className="panel">
@@ -775,7 +892,7 @@ assignments = [
           <TakeawayCard
             num={2}
             color="#d97706"
-            text="AI investigation is a force multiplier. Four different reasoning strategies give you structured, evidence-cited second opinions at machine speed. If the AI goes down, everything else keeps working."
+            text="ML handles the volume, AI handles the ambiguity. Traditional ML models score thousands of records in seconds for fractions of a cent. GenAI investigators step in only for the ambiguous cases — with reasoning, tools, and structured evidence. If the AI goes down, the ML scoring keeps working."
           />
           <TakeawayCard
             num={3}
@@ -998,6 +1115,51 @@ function NumBox({ value, label }: { value: string; label: string }) {
     <div>
       <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--text)" }}>{value}</div>
       <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{label}</div>
+    </div>
+  );
+}
+
+function PipelineStep({ color, icon, title, desc, sub, width }: {
+  color: string; icon: string; title: string; desc: string; sub?: string; width?: number;
+}) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "12px 14px", borderRadius: 8, border: `2px solid ${color}`,
+      background: "var(--bg-surface)", textAlign: "center", minWidth: width ?? 130,
+    }}>
+      <div style={{ fontSize: "1.3rem", marginBottom: 4 }}>{icon}</div>
+      <strong style={{ fontSize: "0.82rem" }}>{title}</strong>
+      <span className="muted" style={{ fontSize: "0.72rem" }}>{desc}</span>
+      {sub && <span style={{ fontSize: "0.68rem", color, fontWeight: 600, marginTop: 2 }}>{sub}</span>}
+    </div>
+  );
+}
+
+function PipelineArrow({ label }: { label: string }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      padding: "0 6px", color: "var(--text-muted)",
+    }}>
+      <span style={{ fontSize: "1rem" }}>→</span>
+      <span style={{ fontSize: "0.65rem", whiteSpace: "nowrap" }}>{label}</span>
+    </div>
+  );
+}
+
+function PipelineBranch({ color, label, desc, highlight }: {
+  color: string; label: string; desc: string; highlight?: boolean;
+}) {
+  return (
+    <div style={{
+      padding: "6px 12px", borderRadius: 6,
+      border: highlight ? `2px solid ${color}` : `1px solid var(--border)`,
+      background: highlight ? "var(--bg-surface)" : "transparent",
+      fontSize: "0.78rem", display: "flex", gap: 8, alignItems: "center",
+    }}>
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <span className="muted" style={{ fontSize: "0.7rem" }}>{desc}</span>
     </div>
   );
 }
