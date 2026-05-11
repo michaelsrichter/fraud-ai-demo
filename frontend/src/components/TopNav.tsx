@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { path: "/", label: "Home" },
   { path: "/labs/expenses", label: "Expenses" },
   { path: "/story", label: "Our Story" },
+  { path: "/presentation", label: "Presentation" },
 ];
 
 export function TopNav({ profile }: Props) {

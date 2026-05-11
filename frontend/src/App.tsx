@@ -6,6 +6,7 @@ import { CaseDetailRoute } from "./routes/CaseDetailRoute";
 import { HomePage } from "./routes/HomePage";
 import { AdminRoute } from "./routes/AdminRoute";
 import { BuildStoryRoute } from "./routes/BuildStoryRoute";
+import { PresentationRoute } from "./routes/PresentationRoute";
 import { TopNav } from "./components/TopNav";
 import { CreateProfileForm } from "./components/CreateProfileForm";
 import { Footer } from "./components/Footer";
@@ -72,6 +73,9 @@ export function App() {
 
         {/* Story */}
         <Route path="/story" element={<BuildStoryRoute />} />
+
+        {/* Presentation */}
+        <Route path="/presentation" element={<PresentationRoute />} />
 
         {/* Admin */}
         <Route path="/admin" element={<AdminRoute />} />
