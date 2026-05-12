@@ -1,23 +1,23 @@
 # From Idea to Fraud Lab in Days
 
-## Vibe Coding an AI-Powered Expense Fraud Simulator with GitHub Copilot
+## How Fraud Teams Can Build Purpose-Built Detection Tools — Without Waiting on Engineering Cycles
 
 **Mike Richter** · Principal Partner Solution Architect, Microsoft
 **NYCFE Spring Fraud Conference** · May 16, 2026
 
 ---
 
-## Three Lessons You'll Take Away
+## The Problem
 
-1. **Your fraud expertise is now the bottleneck** — not software engineering
-2. **AI doesn't replace the investigator** — it gives you a second opinion at machine speed
-3. **A prototype becomes production-grade** — without re-architecting anything
+Fraud teams know exactly what to look for — the red flags, the patterns, the investigator instincts built over years of case work. But turning that knowledge into tooling has always required long engineering cycles, generic platforms adapted to your workflow, and months of back-and-forth with development teams.
 
----
+Meanwhile:
+- **False positives** consume investigator hours on cases that aren't fraud
+- **Triage bottlenecks** mean high-risk cases wait in queue behind routine reviews
+- **Junior analysts** lack the pattern recognition that experienced investigators carry
+- **Institutional knowledge walks out the door** when senior investigators leave the team
 
-## The Question
-
-> What if building a custom fraud detection tool took **days** instead of **months**?
+> What if fraud teams could actively shape and evolve their own tooling in days instead of months?
 
 Not a generic, off-the-shelf platform you adapt to your workflow —
 a purpose-built tool that understands **your** fraud patterns, **your** data sources, **your** investigation process.
@@ -26,17 +26,33 @@ That's what we're going to walk through today.
 
 ---
 
+## Three Lessons You'll Take Away
+
+1. **Domain expertise is now the highest-value input** — the bottleneck is no longer engineering capacity
+2. **AI doesn't replace the investigator** — it gives you a second opinion at machine speed
+3. **A prototype becomes production-grade** — without re-architecting anything
+
+---
+
+## A Note on Responsible AI
+
+> **AI assists investigations — it does not autonomously make fraud decisions. Humans stay accountable.**
+
+Every AI-generated assessment in this system is a *recommendation*, not a ruling. The investigator reviews the evidence, validates the reasoning, and makes the final call. The system runs in a sandboxed environment with governance controls, audit logging, and role-based access. This is a decision-support tool, not an autonomous agent.
+
+---
+
 ## What I Built
 
-A fully functional AI-powered fraud detection application:
+A fully functional AI-powered fraud detection application designed around real investigation workflows:
 
-- **Synthetic data generation** — Employee expense records with configurable fraud patterns
-- **ML-based anomaly detection** — Three different scoring models compare how algorithms flag the same records
-- **AI-powered investigation** — LLMs that query data, run calculations, and produce structured verdicts with cited evidence
-- **Four investigation strategies** — Single agent, multi-model consensus, adversarial debate, and escalation pipelines
-- **Cloud deployment** — Azure Functions, managed identity, infrastructure-as-code
+- **Reduce false positives** — Three ML models score every record; where they agree, you have strong signal. Where they disagree, you know to look closer.
+- **Speed up triage** — AI investigators analyze ambiguous cases in seconds, producing structured assessments with cited evidence — work that would take an analyst 30–60 minutes per case.
+- **Help investigators at every level** — Junior analysts get AI-powered escalation support. Senior investigators get a second opinion at machine speed.
+- **Scale expertise** — Capture institutional fraud knowledge in reusable investigation workflows, prompt templates, and detection patterns.
+- **Four investigation strategies** — Single agent, multi-model consensus, adversarial review, and escalation pipelines — each modeled on real team processes.
 
-**Built in 4 days. By one person. Through conversation.**
+**Built in 4 days. By one person. Through conversation with an AI coding agent (GitHub Copilot).**
 
 ---
 
@@ -50,9 +66,9 @@ Generate a dataset, see the ML scoring results, drill into a flagged case, and t
 
 ---
 
-## Lesson 1: Your Fraud Expertise Is Now the Bottleneck
+## Lesson 1: Domain Expertise Is Now the Highest-Value Input
 
-### Not software engineering. Not IT resources. Not budget cycles.
+### The bottleneck is no longer engineering capacity.
 
 The hardest part of building this system wasn't writing code.
 It was describing the fraud patterns accurately.
@@ -171,7 +187,31 @@ The **specifications** are the product, not the code.
 
 Every feature started as a description of a fraud pattern, an investigation workflow, or a triage process. If you can describe what you're looking for — the red flags, the data you cross-reference, the questions you ask — the tooling to build it into software already exists.
 
-**The bottleneck isn't programming skill. It's domain expertise. And that's what you have.**
+**Domain expertise is the highest-value input. And that's exactly what your team has.**
+
+---
+
+### Before vs. After: The Investigator's Workflow
+
+| | Before (Manual Review) | After (AI-Assisted Triage) |
+|---|---|---|
+| **Initial triage** | Analyst manually reviews each flagged case | ML scores all records instantly; AI pre-investigates ambiguous cases |
+| **Time per case** | 30–60 minutes of manual cross-referencing | 10–60 seconds for AI assessment; analyst reviews summary |
+| **Junior analyst support** | Escalate to senior; wait for availability | AI provides structured analysis with cited evidence; junior reviews with context |
+| **Pattern documentation** | Tribal knowledge; informal notes | Encoded in prompt templates and detection rules — reusable, version-controlled |
+| **Scaling the team** | Hire and train (months) | Capture senior investigator patterns in AI workflows (days) |
+
+The investigator's role doesn't change — they still make the call. But instead of spending an hour assembling the evidence, they spend five minutes reviewing a structured brief.
+
+---
+
+### Capturing Institutional Knowledge
+
+One of the most valuable aspects of this approach: **experienced investigators can encode their expertise into reusable systems.**
+
+The fraud patterns, the investigation heuristics, the red flags that take years to learn — all of it gets captured in prompt templates, detection rules, and investigation workflows that persist even when team members move on.
+
+This turns institutional knowledge from something that lives in people's heads into something that scales across the team and survives turnover.
 
 ---
 
@@ -277,14 +317,14 @@ And produces a structured assessment:
 
 **Consensus** — Three different AI models investigate independently. An arbiter synthesizes the findings. Where models agree → high confidence. Where they disagree → look closer.
 
-**Debate** — Two agents with opposing mandates:
+**Adversarial Review (Debate)** — Two agents with opposing mandates:
 - Agent A is told to *find the fraud*
 - Agent B is told to *find the legitimate explanation*
 - An arbiter weighs both arguments and commits to a verdict
 
-This mirrors how adversarial review processes work in professional investigation.
+This directly mirrors how many fraud review teams already operate: one analyst builds the case, another stress-tests it, and a senior reviewer makes the final determination. The difference is that AI can run this adversarial process in under a minute — producing a structured brief for the human reviewer rather than replacing the review itself.
 
-#### 📂 The actual debate instructions
+#### 📂 The actual review instructions
 
 The fraud-leaning agent receives this instruction ([`debate-fraud-leaning.md`](https://github.com/michaelsrichter/fraud-ai-demo/blob/main/prompts/debate-fraud-leaning.md)):
 
@@ -294,9 +334,9 @@ While the defense agent receives ([`debate-non-fraud-leaning.md`](https://github
 
 > *"You are acting as the DEFENSE ADVOCATE. Your job is to build the strongest possible case that this expense is LEGITIMATE. Your role is that of a defense attorney — give the employee the benefit of the doubt."*
 
-These are plain English instructions — not code. Anyone could write them.
+These are plain English instructions — not code. A fraud examiner could write and refine these prompts based on their own review methodology.
 
-**Junior → Senior** — A faster, cheaper model handles initial triage. High-confidence cases are resolved immediately. Low-confidence cases escalate to a more capable model — carrying the junior's preliminary analysis forward. This mirrors how investigation teams triage in practice.
+**Junior → Senior Escalation** — A faster, cheaper model handles initial triage. High-confidence cases are resolved immediately. Low-confidence cases escalate to a more capable model — carrying the junior's preliminary analysis forward. This mirrors how investigation teams triage in practice: junior analysts handle routine cases and escalate the complex ones with their preliminary notes attached.
 
 ---
 
@@ -429,12 +469,15 @@ Each uses fundamentally different mathematics. Where they agree, you have strong
 
 ### The Shift
 
+The strongest theme here: **fraud teams can now actively shape and evolve their own tooling much faster**, instead of waiting on long engineering cycles.
+
 | Before | Now |
 |--------|-----|
 | 6-month software development cycle | Days to working prototype |
 | Generic tools adapted to your workflow | Purpose-built tools that match your process |
 | IT bottleneck for every enhancement | Domain experts drive the specifications |
 | Quarterly release cadence | Iterate in days |
+| Institutional knowledge lives in people's heads | Expertise encoded in reusable workflows and prompts |
 
 ---
 
@@ -454,11 +497,11 @@ The same patterns — ML scoring, AI investigation, adversarial reasoning, escal
 
 ### The Takeaway
 
-1. **Your fraud expertise is the most valuable input.** Describe the patterns, the red flags, the investigation workflows — and working software follows in days.
+1. **Domain expertise is the highest-value input.** Describe the patterns, the red flags, the investigation workflows — and working software follows in days. Capture institutional knowledge so it scales across your team and survives turnover.
 
-2. **AI investigation is a force multiplier.** Four different reasoning strategies give you structured, evidence-cited second opinions at machine speed. If the AI goes down, everything else keeps working.
+2. **AI assists — humans decide.** Four investigation strategies give you structured, evidence-cited second opinions at machine speed. The investigator reviews, validates, and makes the final call. If the AI goes down, the ML scoring and detection keep working.
 
-3. **Production-grade from day one.** Zero secrets, managed identity, infrastructure-as-code. What you validate today deploys to a governed environment tomorrow with a single command.
+3. **Production-grade from day one.** Zero secrets, managed identity, infrastructure-as-code, audit logging, and governance controls. What you validate today deploys to a governed environment tomorrow with a single command.
 
 ---
 

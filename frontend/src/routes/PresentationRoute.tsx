@@ -11,7 +11,9 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   { id: "title", label: "Title" },
+  { id: "problem", label: "The Problem" },
   { id: "lessons", label: "3 Lessons" },
+  { id: "responsible-ai", label: "Responsible AI" },
   { id: "live-demo", label: "Live Demo" },
   { id: "lesson1", label: "Lesson 1" },
   { id: "vibe-coding", label: "Vibe Coding" },
@@ -20,6 +22,8 @@ const SLIDES: Slide[] = [
   { id: "process", label: "The Process" },
   { id: "timeline", label: "Timeline" },
   { id: "lesson1-why", label: "Why It Matters" },
+  { id: "before-after", label: "Before vs After" },
+  { id: "knowledge", label: "Institutional Knowledge" },
   { id: "lesson2", label: "Lesson 2" },
   { id: "ml-vs-ai", label: "ML vs GenAI" },
   { id: "ml-scoring-code", label: "ML Scoring" },
@@ -217,11 +221,34 @@ export function PresentationRoute() {
           From Idea to Fraud Lab in Days
         </h1>
         <p style={{ ...S.sub, maxWidth: 700, margin: "0 auto 16px" }}>
-          Vibe Coding an AI-Powered Expense Fraud Simulator with GitHub Copilot
+          How Fraud Teams Can Build Purpose-Built Detection Tools — Without Waiting on Engineering Cycles
         </p>
         <p style={{ fontSize: "0.95rem", color: "var(--text-muted)" }}>
           <strong>Mike Richter</strong> · Principal Partner Solution Architect, Microsoft
         </p>
+      </section>
+
+      {/* ════════════ THE PROBLEM ════════════ */}
+      <section id="problem" style={S.slide}>
+        <h2 style={S.h2}>The Problem</h2>
+        <p style={S.body}>
+          Fraud teams know exactly what to look for — the red flags, the patterns,
+          the investigator instincts built over years of case work. But turning that
+          knowledge into tooling has always required long engineering cycles and generic
+          platforms adapted to your workflow.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, margin: "16px 0" }}>
+          <SignalCard icon="🚩" title="False Positives" desc="Investigator hours consumed on cases that aren't fraud" />
+          <SignalCard icon="⏳" title="Triage Bottlenecks" desc="High-risk cases wait in queue behind routine reviews" />
+          <SignalCard icon="📈" title="Scaling Expertise" desc="Junior analysts lack the pattern recognition seniors carry" />
+          <SignalCard icon="💭" title="Knowledge Loss" desc="Institutional knowledge walks out the door when senior investigators leave" />
+        </div>
+        <div style={S.callout}>
+          <p style={{ ...S.quote, margin: 0 }}>
+            What if fraud teams could actively shape and evolve their own tooling
+            in <strong>days</strong> instead of months?
+          </p>
+        </div>
       </section>
 
       {/* ════════════ THREE LESSONS ════════════ */}
@@ -231,14 +258,14 @@ export function PresentationRoute() {
           <LessonCard
             num={1}
             color="#2563eb"
-            title="Your fraud expertise is now the bottleneck — not software engineering"
+            title="Domain expertise is now the highest-value input — the bottleneck is no longer engineering capacity"
             body="When a technical architect feeds your domain knowledge to an AI coding agent, what used to be a six-month build collapses into days. The limiting factor has shifted from 'can we build it?' to 'can we describe what we're looking for?'"
           />
           <LessonCard
             num={2}
             color="#d97706"
-            title="AI doesn't replace the investigator — it gives you a second opinion at machine speed"
-            body="The AI investigation layer takes the same behavioral signals an analyst would review and returns a structured assessment: likely, unlikely, or inconclusive, with cited evidence and a recommended next step. It's a force multiplier for triage, not a replacement for judgment."
+            title="AI assists the investigator — it doesn't autonomously make fraud decisions"
+            body="The AI investigation layer takes the same behavioral signals an analyst would review and returns a structured assessment: likely, unlikely, or inconclusive, with cited evidence and a recommended next step. Humans review, validate, and make the final call."
           />
           <LessonCard
             num={3}
@@ -246,6 +273,22 @@ export function PresentationRoute() {
             title="A prototype becomes production-grade — without re-architecting anything"
             body="Everything runs on Azure with zero stored secrets — managed identity, role-based access control, infrastructure as code. The proof-of-concept your team validates on Tuesday can deploy to a governed, auditable environment by Thursday with a single command."
           />
+        </div>
+      </section>
+
+      {/* ════════════ RESPONSIBLE AI ════════════ */}
+      <section id="responsible-ai" style={S.slideCompact}>
+        <div style={{ ...S.callout, borderLeftColor: "#7c3aed" }}>
+          <h3 style={{ ...S.h3, marginBottom: 8 }}>🛡️ A Note on Responsible AI</h3>
+          <p style={{ ...S.body, margin: "0 0 8px" }}>
+            <strong>AI assists investigations — it does not autonomously make fraud decisions. Humans stay accountable.</strong>
+          </p>
+          <p style={{ ...S.body, margin: 0 }}>
+            Every AI-generated assessment in this system is a recommendation, not a ruling.
+            The investigator reviews the evidence, validates the reasoning, and makes the final call.
+            The system runs in a sandboxed environment with governance controls, audit logging,
+            and role-based access. This is a decision-support tool, not an autonomous agent.
+          </p>
         </div>
       </section>
 
@@ -266,12 +309,12 @@ export function PresentationRoute() {
         </p>
       </section>
 
-      {/* ════════════ LESSON 1: BOTTLENECK ════════════ */}
+      {/* ════════════ LESSON 1: DOMAIN EXPERTISE ════════════ */}
       <section id="lesson1" style={S.slide}>
         <div style={S.lessonBadge("#2563eb")}>LESSON 1</div>
-        <h2 style={S.h2}>Your Fraud Expertise Is Now the Bottleneck</h2>
+        <h2 style={S.h2}>Domain Expertise Is Now the Highest-Value Input</h2>
         <p style={{ ...S.sub, fontSize: "1.3rem" }}>
-          Not software engineering. Not IT resources. Not budget cycles.
+          The bottleneck is no longer engineering capacity.
         </p>
         <p style={S.body}>
           The hardest part of building this system wasn't writing code.
@@ -425,7 +468,51 @@ if (rng.NextDouble() < 0.25)
           already exists.
         </p>
         <p style={{ fontSize: "1rem", fontWeight: 600 }}>
-          The bottleneck isn't programming skill. It's domain expertise. And that's what you have.
+          Domain expertise is the highest-value input. And that's exactly what your team has.
+        </p>
+      </section>
+
+      {/* ── Before vs After ── */}
+      <section id="before-after" style={S.slideCompact}>
+        <h3 style={S.h3}>Before vs. After: The Investigator's Workflow</h3>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}></th>
+              <th style={S.th}>Before (Manual Review)</th>
+              <th style={{ ...S.th, color: "var(--link)" }}>After (AI-Assisted Triage)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Initial triage</td><td style={S.td}>Analyst manually reviews each flagged case</td><td style={S.td}>ML scores all records instantly; AI pre-investigates ambiguous cases</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Time per case</td><td style={S.td}>30–60 min of manual cross-referencing</td><td style={S.td}>10–60 sec AI assessment; analyst reviews summary</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Junior support</td><td style={S.td}>Escalate to senior; wait for availability</td><td style={S.td}>AI provides structured analysis with cited evidence; junior reviews with context</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Pattern docs</td><td style={S.td}>Tribal knowledge; informal notes</td><td style={S.td}>Encoded in prompt templates and detection rules — reusable, version-controlled</td></tr>
+            <tr><td style={{ ...S.td, fontWeight: 600 }}>Scaling the team</td><td style={S.td}>Hire and train (months)</td><td style={S.td}>Capture senior patterns in AI workflows (days)</td></tr>
+          </tbody>
+        </table>
+        <p style={S.body}>
+          The investigator's role doesn't change — they still make the call. But instead of
+          spending an hour assembling the evidence, they spend five minutes reviewing a structured brief.
+        </p>
+      </section>
+
+      {/* ── Institutional Knowledge ── */}
+      <section id="knowledge" style={S.slideCompact}>
+        <h3 style={S.h3}>🏛️ Capturing Institutional Knowledge</h3>
+        <div style={S.callout}>
+          <p style={{ ...S.quote, margin: 0 }}>
+            Experienced investigators can encode their expertise into <strong>reusable systems</strong>.
+          </p>
+        </div>
+        <p style={S.body}>
+          The fraud patterns, the investigation heuristics, the red flags that take years to learn —
+          all of it gets captured in prompt templates, detection rules, and investigation workflows
+          that persist even when team members move on.
+        </p>
+        <p style={{ fontSize: "1rem", fontWeight: 600 }}>
+          This turns institutional knowledge from something that lives in people's heads
+          into something that scales across the team and survives turnover.
         </p>
       </section>
 
@@ -594,12 +681,12 @@ return "Low";                                       // Normal`}
             desc="Three AI models investigate independently. An arbiter synthesizes findings. Where they agree → high confidence."
           />
           <ModeCard
-            icon="⚔️" title="Debate"
-            desc="Agent A finds the fraud. Agent B finds the legitimate explanation. An arbiter weighs both arguments and commits. Mirrors adversarial review."
+            icon="⚔️" title="Adversarial Review (Debate)"
+            desc="Agent A finds the fraud. Agent B finds the legitimate explanation. An arbiter weighs both arguments. Mirrors how fraud review teams already operate: build the case, stress-test it, senior reviewer decides."
           />
           <ModeCard
-            icon="📈" title="Junior → Senior"
-            desc="Cheaper model triages first. High-confidence cases resolve immediately. Low-confidence escalates to a premium model. Mirrors real team triage."
+            icon="📈" title="Junior → Senior Escalation"
+            desc="Cheaper model triages first. High-confidence cases resolve immediately. Low-confidence escalates to a premium model with the junior's preliminary notes attached. Mirrors real team triage."
           />
         </div>
       </section>
@@ -643,8 +730,10 @@ the benefit of the doubt."`}
           </div>
         </div>
         <p style={{ ...S.body, marginTop: 12 }}>
-          These are plain English instructions — not code. Anyone could write them.
-          The AI coding agent turned them into a working adversarial investigation system.
+          These are plain English instructions — not code. A fraud examiner could write and
+          refine these prompts based on their own review methodology. This directly mirrors
+          how many fraud review teams already operate: one analyst builds the case, another
+          stress-tests it, and a senior reviewer makes the final determination.
         </p>
       </section>
 
@@ -845,6 +934,12 @@ assignments = [
       {/* ── The Shift ── */}
       <section id="shift" style={S.slideCompact}>
         <h3 style={S.h3}>The Shift</h3>
+        <div style={{ ...S.callout, marginBottom: 16 }}>
+          <p style={{ ...S.quote, margin: 0 }}>
+            Fraud teams can now <strong>actively shape and evolve their own tooling</strong> much faster,
+            instead of waiting on long engineering cycles.
+          </p>
+        </div>
         <table style={S.table}>
           <thead>
             <tr>
@@ -857,6 +952,7 @@ assignments = [
             <tr><td style={S.td}>Generic tools adapted to your workflow</td><td style={{ ...S.td, fontWeight: 600 }}>Purpose-built tools that match your process</td></tr>
             <tr><td style={S.td}>IT bottleneck for every enhancement</td><td style={{ ...S.td, fontWeight: 600 }}>Domain experts drive the specifications</td></tr>
             <tr><td style={S.td}>Quarterly release cadence</td><td style={{ ...S.td, fontWeight: 600 }}>Iterate in days</td></tr>
+            <tr><td style={S.td}>Institutional knowledge in people's heads</td><td style={{ ...S.td, fontWeight: 600 }}>Expertise encoded in reusable workflows and prompts</td></tr>
           </tbody>
         </table>
       </section>
@@ -887,17 +983,17 @@ assignments = [
           <TakeawayCard
             num={1}
             color="#2563eb"
-            text="Your fraud expertise is the most valuable input. Describe the patterns, the red flags, the investigation workflows — and working software follows in days."
+            text="Domain expertise is the highest-value input. Describe the patterns, the red flags, the investigation workflows — and working software follows in days. Capture institutional knowledge so it scales across your team and survives turnover."
           />
           <TakeawayCard
             num={2}
             color="#d97706"
-            text="ML handles the volume, AI handles the ambiguity. Traditional ML models score thousands of records in seconds for fractions of a cent. GenAI investigators step in only for the ambiguous cases — with reasoning, tools, and structured evidence. If the AI goes down, the ML scoring keeps working."
+            text="AI assists — humans decide. Four investigation strategies give you structured, evidence-cited second opinions at machine speed. The investigator reviews, validates, and makes the final call. If the AI goes down, the ML scoring and detection keep working."
           />
           <TakeawayCard
             num={3}
             color="#16a34a"
-            text="Production-grade from day one. Zero secrets, managed identity, infrastructure-as-code. What you validate today deploys to a governed environment tomorrow with a single command."
+            text="Production-grade from day one. Zero secrets, managed identity, infrastructure-as-code, audit logging, and governance controls. What you validate today deploys to a governed environment tomorrow with a single command."
           />
         </div>
       </section>
