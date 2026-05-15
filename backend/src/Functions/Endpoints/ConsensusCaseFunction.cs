@@ -105,6 +105,7 @@ public sealed class ConsensusCaseFunction
             keySignals = result.KeySignals,
             recommendedAction = result.RecommendedAction,
             unavailableReason = result.UnavailableReason,
+            costEstimate = result.CostEstimate,
             toolTrace = result.ToolTrace?.Select(t => new
             {
                 toolName = t.ToolName,
@@ -119,9 +120,15 @@ public sealed class ConsensusCaseFunction
 
         // Run arbiter LLM to reason over the 3 results
         object? arbiter = null;
+        Domain.Entities.AiCostEstimate? arbiterCostEstimate = null;
         try
         {
-            arbiter = await RunArbiterAsync(modelResults, temperature, cancellationToken);
+            var arbiterResult = await RunArbiterAsync(modelResults, temperature, cancellationToken);
+            if (arbiterResult is not null)
+            {
+                arbiter = arbiterResult.Value.Payload;
+                arbiterCostEstimate = arbiterResult.Value.CostEstimate;
+            }
         }
         catch (Exception ex)
         {
@@ -153,6 +160,10 @@ public sealed class ConsensusCaseFunction
             }
         }
 
+        var totalCostEstimate = AiCostEstimator.Sum(
+            "consensus-total",
+            results.Select(r => r.CostEstimate).Concat(new[] { arbiterCostEstimate }));
+
         var consensus = new
         {
             consensusVerdict,
@@ -161,6 +172,8 @@ public sealed class ConsensusCaseFunction
             temperature,
             models = modelResults,
             arbiter,
+            arbiterCostEstimate,
+            costEstimate = totalCostEstimate,
         };
 
         var response = req.CreateResponse(HttpStatusCode.OK);
@@ -168,7 +181,7 @@ public sealed class ConsensusCaseFunction
         return response;
     }
 
-    private async Task<object?> RunArbiterAsync<T>(List<T> modelResults, float? temperature, CancellationToken cancellationToken)
+    private async Task<(JsonElement Payload, Domain.Entities.AiCostEstimate CostEstimate)?> RunArbiterAsync<T>(List<T> modelResults, float? temperature, CancellationToken cancellationToken)
     {
         var endpoint = _foundryOptions.Value.Endpoint;
         if (string.IsNullOrWhiteSpace(endpoint)) return null;
@@ -185,7 +198,8 @@ public sealed class ConsensusCaseFunction
         cts.CancelAfter(TimeSpan.FromSeconds(60));
 
         var agentResponse = await agent.RunAsync(prompt, cancellationToken: cts.Token);
-        var json = agentResponse.Text;
+        var rawResponseText = agentResponse.Text;
+        var json = rawResponseText;
 
         // Strip markdown fences if present
         if (json.Contains("```"))
@@ -196,6 +210,10 @@ public sealed class ConsensusCaseFunction
                 json = json[start..(end + 1)];
         }
 
-        return JsonSerializer.Deserialize<JsonElement>(json);
+        var payload = JsonSerializer.Deserialize<JsonElement>(json);
+        var inputTokens = AiCostEstimator.EstimateTokensFromText(ArbiterSystemPrompt) + AiCostEstimator.EstimateTokensFromText(prompt);
+        var outputTokens = AiCostEstimator.EstimateTokensFromText(rawResponseText);
+        var costEstimate = AiCostEstimator.Estimate(ArbiterModel, inputTokens, outputTokens);
+        return (payload, costEstimate);
     }
 }

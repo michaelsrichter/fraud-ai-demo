@@ -15,6 +15,8 @@ public sealed record AiInvestigationResult
     public string? RecommendedAction { get; }
     public string? UnavailableReason { get; }
     public IReadOnlyList<ToolInvocation>? ToolTrace { get; }
+    public string? ModelDeploymentName { get; }
+    public AiCostEstimate? CostEstimate { get; }
 
     public AiInvestigationResult(
         Guid recordId,
@@ -27,7 +29,9 @@ public sealed record AiInvestigationResult
         IReadOnlyList<string>? keySignals,
         string? recommendedAction,
         string? unavailableReason,
-        IReadOnlyList<ToolInvocation>? toolTrace = null)
+        IReadOnlyList<ToolInvocation>? toolTrace = null,
+        string? modelDeploymentName = null,
+        AiCostEstimate? costEstimate = null)
     {
         RecordId = recordId;
         RunId = runId;
@@ -40,6 +44,8 @@ public sealed record AiInvestigationResult
         RecommendedAction = recommendedAction;
         UnavailableReason = unavailableReason;
         ToolTrace = toolTrace;
+        ModelDeploymentName = modelDeploymentName;
+        CostEstimate = costEstimate;
     }
 
     public static AiInvestigationResult Succeeded(
@@ -51,7 +57,9 @@ public sealed record AiInvestigationResult
         string rationale,
         IReadOnlyList<string> keySignals,
         string recommendedAction,
-        IReadOnlyList<ToolInvocation>? toolTrace = null)
+        IReadOnlyList<ToolInvocation>? toolTrace = null,
+        string? modelDeploymentName = null,
+        AiCostEstimate? costEstimate = null)
     {
         if (recordId == Guid.Empty) throw new ArgumentException("RecordId required.", nameof(recordId));
         if (runId == Guid.Empty) throw new ArgumentException("RunId required.", nameof(runId));
@@ -72,14 +80,18 @@ public sealed record AiInvestigationResult
             keySignals,
             recommendedAction,
             null,
-            toolTrace);
+                toolTrace,
+                modelDeploymentName,
+                costEstimate);
     }
 
     public static AiInvestigationResult Unavailable(
         Guid recordId,
         Guid runId,
         DateTimeOffset requestedUtc,
-        string reason)
+        string reason,
+        string? modelDeploymentName = null,
+        AiCostEstimate? costEstimate = null)
     {
         if (recordId == Guid.Empty) throw new ArgumentException("RecordId required.", nameof(recordId));
         if (runId == Guid.Empty) throw new ArgumentException("RunId required.", nameof(runId));
@@ -95,6 +107,9 @@ public sealed record AiInvestigationResult
             null,
             null,
             null,
-            reason);
+            reason,
+            null,
+            modelDeploymentName,
+            costEstimate);
     }
 }

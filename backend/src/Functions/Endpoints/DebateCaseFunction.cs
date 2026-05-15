@@ -5,6 +5,7 @@ using Azure.AI.OpenAI;
 using Azure.Core;
 using FraudDemo.Application.Abstractions;
 using FraudDemo.Application.Configuration;
+using FraudDemo.Application.Services;
 using FraudDemo.Domain.Projections;
 using FraudDemo.Infrastructure.Ai;
 using Microsoft.Agents.AI;
@@ -130,10 +131,16 @@ public sealed class DebateCaseFunction
 
         // Run arbiter (FR-014) — follows ConsensusCaseFunction.RunArbiterAsync pattern
         object? arbiter = null;
+        Domain.Entities.AiCostEstimate? arbiterCostEstimate = null;
         string finalVerdict;
         try
         {
-            arbiter = await RunArbiterAsync(agentFindings, temperature, cancellationToken);
+            var arbiterResult = await RunArbiterAsync(agentFindings, temperature, cancellationToken);
+            if (arbiterResult is not null)
+            {
+                arbiter = arbiterResult.Value.Payload;
+                arbiterCostEstimate = arbiterResult.Value.CostEstimate;
+            }
             if (arbiter is not null)
             {
                 var arbiterJson = JsonSerializer.Serialize(arbiter, JsonOptions);
@@ -153,6 +160,10 @@ public sealed class DebateCaseFunction
             finalVerdict = fraudResult.Verdict?.ToString() ?? "Inconclusive";
         }
 
+        var totalCostEstimate = AiCostEstimator.Sum(
+            "debate-total",
+            new[] { fraudResult.CostEstimate, nonFraudResult.CostEstimate, arbiterCostEstimate });
+
         var debateResponse = new
         {
             finalVerdict,
@@ -161,6 +172,8 @@ public sealed class DebateCaseFunction
             fraudLeaning = MapAgentResult(fraudResult),
             nonFraudLeaning = MapAgentResult(nonFraudResult),
             arbiter,
+            arbiterCostEstimate,
+            costEstimate = totalCostEstimate,
         };
 
         var response = req.CreateResponse(HttpStatusCode.OK);
@@ -178,6 +191,7 @@ public sealed class DebateCaseFunction
             keySignals = result.KeySignals,
             recommendedAction = result.RecommendedAction,
             unavailableReason = result.UnavailableReason,
+            costEstimate = result.CostEstimate,
             toolTrace = result.ToolTrace?.Select(t => new
             {
                 toolName = t.ToolName,
@@ -191,7 +205,7 @@ public sealed class DebateCaseFunction
         };
     }
 
-    private async Task<object?> RunArbiterAsync<T>(T[] agentFindings, float? temperature, CancellationToken cancellationToken)
+    private async Task<(JsonElement Payload, Domain.Entities.AiCostEstimate CostEstimate)?> RunArbiterAsync<T>(T[] agentFindings, float? temperature, CancellationToken cancellationToken)
     {
         var endpoint = _foundryOptions.Value.Endpoint;
         if (string.IsNullOrWhiteSpace(endpoint)) return null;
@@ -207,7 +221,8 @@ public sealed class DebateCaseFunction
         cts.CancelAfter(TimeSpan.FromSeconds(60));
 
         var agentResponse = await agent.RunAsync(prompt, cancellationToken: cts.Token);
-        var json = agentResponse.Text;
+        var rawResponseText = agentResponse.Text;
+        var json = rawResponseText;
 
         // Strip markdown fences if present
         if (json.Contains("```"))
@@ -218,6 +233,10 @@ public sealed class DebateCaseFunction
                 json = json[start..(end + 1)];
         }
 
-        return JsonSerializer.Deserialize<JsonElement>(json);
+        var payload = JsonSerializer.Deserialize<JsonElement>(json);
+        var inputTokens = AiCostEstimator.EstimateTokensFromText(AgentInvestigator.DebateArbiterPrompt) + AiCostEstimator.EstimateTokensFromText(prompt);
+        var outputTokens = AiCostEstimator.EstimateTokensFromText(rawResponseText);
+        var costEstimate = AiCostEstimator.Estimate("gpt-5.4", inputTokens, outputTokens);
+        return (payload, costEstimate);
     }
 }

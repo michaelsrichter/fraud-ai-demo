@@ -4,6 +4,7 @@ import { juniorSeniorInvestigate, getAllPrompts } from "../api/runsClient";
 import { ToolTracePanel } from "./ToolTracePanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { PromptViewer } from "./PromptViewer";
+import { CostEstimateNote } from "./CostEstimateNote";
 
 interface Props {
   runId: string;
@@ -72,6 +73,7 @@ export function JuniorSeniorPanel({ runId, caseId }: Props) {
 
       {result && (
         <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <CostEstimateNote estimate={result.costEstimate ?? null} />
           {/* Escalation status banner */}
           <div style={{
             display: "flex",
@@ -145,6 +147,7 @@ export function JuniorSeniorPanel({ runId, caseId }: Props) {
             {result.junior.rationale && (
               <p className="muted" style={{ fontSize: "0.75rem", margin: "0 0 6px", lineHeight: 1.5 }}>{result.junior.rationale}</p>
             )}
+            <CostEstimateNote estimate={result.junior.costEstimate ?? null} compact />
             {result.junior.keySignals && result.junior.keySignals.length > 0 && (
               <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
                 {result.junior.keySignals.map((s, i) => <li key={i}>{s}</li>)}
@@ -174,6 +177,7 @@ export function JuniorSeniorPanel({ runId, caseId }: Props) {
               {result.senior.rationale && (
                 <p className="muted" style={{ fontSize: "0.75rem", margin: "0 0 6px", lineHeight: 1.5 }}>{result.senior.rationale}</p>
               )}
+              <CostEstimateNote estimate={result.senior.costEstimate ?? null} compact />
               {result.senior.keySignals && result.senior.keySignals.length > 0 && (
                 <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
                   {result.senior.keySignals.map((s, i) => <li key={i}>{s}</li>)}

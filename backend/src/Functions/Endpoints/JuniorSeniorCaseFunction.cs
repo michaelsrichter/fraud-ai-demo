@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Azure.Core;
 using FraudDemo.Application.Abstractions;
 using FraudDemo.Application.Configuration;
+using FraudDemo.Application.Services;
 using FraudDemo.Domain.Projections;
 using FraudDemo.Infrastructure.Ai;
 using Microsoft.Azure.Functions.Worker;
@@ -100,6 +101,7 @@ public sealed class JuniorSeniorCaseFunction
         // Step 2: Decide whether to escalate (FR-022, FR-023, FR-025)
         bool escalated = confidenceScore <= EscalationThreshold;
         object? seniorResponse = null;
+        Domain.Entities.AiCostEstimate? seniorCostEstimate = null;
         string finalVerdict;
 
         if (!escalated)
@@ -139,6 +141,7 @@ public sealed class JuniorSeniorCaseFunction
                     rationale = seniorResult.Rationale,
                     keySignals = seniorResult.KeySignals,
                     recommendedAction = seniorResult.RecommendedAction,
+                    costEstimate = seniorResult.CostEstimate,
                     toolTrace = seniorResult.ToolTrace?.Select(t => new
                     {
                         toolName = t.ToolName,
@@ -150,6 +153,8 @@ public sealed class JuniorSeniorCaseFunction
                         succeeded = t.Succeeded,
                     }).ToList(),
                 };
+
+                seniorCostEstimate = seniorResult.CostEstimate;
 
                 finalVerdict = seniorResult.Status == Domain.Enums.InvestigationStatus.Succeeded
                     ? seniorResult.Verdict?.ToString() ?? "Inconclusive"
@@ -163,6 +168,10 @@ public sealed class JuniorSeniorCaseFunction
             }
         }
 
+        var totalCostEstimate = AiCostEstimator.Sum(
+            "junior-senior-total",
+            new[] { juniorResult.CostEstimate, seniorCostEstimate });
+
         var juniorSeniorResponse = new
         {
             finalVerdict,
@@ -170,6 +179,7 @@ public sealed class JuniorSeniorCaseFunction
             confidenceScore,
             escalationThreshold = EscalationThreshold,
             temperature,
+            costEstimate = totalCostEstimate,
             junior = new
             {
                 model = JuniorModel,
@@ -179,6 +189,7 @@ public sealed class JuniorSeniorCaseFunction
                 keySignals = juniorResult.KeySignals,
                 recommendedAction = juniorResult.RecommendedAction,
                 confidenceScore,
+                costEstimate = juniorResult.CostEstimate,
                 toolTrace = juniorResult.ToolTrace?.Select(t => new
                 {
                     toolName = t.ToolName,

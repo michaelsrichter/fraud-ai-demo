@@ -4,6 +4,7 @@ import { consensusInvestigate, getAllPrompts } from "../api/runsClient";
 import { ToolTracePanel } from "./ToolTracePanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { PromptViewer } from "./PromptViewer";
+import { CostEstimateNote } from "./CostEstimateNote";
 
 interface Props {
   runId: string;
@@ -72,6 +73,7 @@ export function ConsensusPanel({ runId, caseId }: Props) {
 
       {consensusResult && (
         <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <CostEstimateNote estimate={consensusResult.costEstimate ?? null} />
           <h3 style={{ fontSize: "0.95rem", margin: "0 0 12px" }}>
             Model Responses
             <span className="muted" style={{ marginLeft: 8, fontSize: "0.8rem", fontWeight: 400 }}>
@@ -99,6 +101,7 @@ export function ConsensusPanel({ runId, caseId }: Props) {
                 {m.rationale && (
                   <p className="muted" style={{ fontSize: "0.75rem", margin: "0 0 6px", lineHeight: 1.5 }}>{m.rationale}</p>
                 )}
+                <CostEstimateNote estimate={m.costEstimate} compact />
                 {m.keySignals && m.keySignals.length > 0 && (
                   <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
                     {m.keySignals.slice(0, 5).map((s, i) => <li key={i}>{s}</li>)}
@@ -155,6 +158,7 @@ export function ConsensusPanel({ runId, caseId }: Props) {
               <p className="muted" style={{ fontSize: "0.78rem", margin: 0, lineHeight: 1.6 }}>
                 {consensusResult.arbiter.reasoning}
               </p>
+              <CostEstimateNote estimate={consensusResult.arbiterCostEstimate ?? null} compact />
             </div>
           )}
 

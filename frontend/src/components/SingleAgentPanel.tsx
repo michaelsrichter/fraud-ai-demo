@@ -4,6 +4,7 @@ import { AVAILABLE_MODELS, getPromptPreview, getAllPrompts, streamInvestigation 
 import { ToolTracePanel } from "./ToolTracePanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { PromptViewer } from "./PromptViewer";
+import { CostEstimateNote } from "./CostEstimateNote";
 
 interface Props {
   investigation: AiInvestigationResult | null | undefined;
@@ -167,6 +168,7 @@ export function SingleAgentPanel({ investigation, isLoading, onInvestigate, runI
             <span className="badge badge-medium">Unavailable</span>{" "}
             <span className="muted">{displayInvestigation.unavailableReason ?? "unknown reason"}</span>
           </p>
+          <CostEstimateNote estimate={displayInvestigation.costEstimate} />
           <p className="help">
             The AI service was unreachable or timed out. Check that Foundry__Endpoint is configured.
           </p>
@@ -186,6 +188,7 @@ export function SingleAgentPanel({ investigation, isLoading, onInvestigate, runI
               {displayInvestigation.verdict}
             </span>
           </h3>
+          <CostEstimateNote estimate={displayInvestigation.costEstimate} />
           <p style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem", margin: "0 0 8px" }}>{displayInvestigation.rationale}</p>
           <h4 style={{ fontSize: "0.85rem", margin: "8px 0 4px" }}>Key signals</h4>
           <ul className="signals" style={{ fontSize: "0.8rem" }}>

@@ -86,6 +86,17 @@ export const ToolInvocationSchema = z.object({
 });
 export type ToolInvocation = z.infer<typeof ToolInvocationSchema>;
 
+export const AiCostEstimateSchema = z.object({
+  model: z.string(),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  inputCostUsd: z.number().nonnegative(),
+  outputCostUsd: z.number().nonnegative(),
+  totalCostUsd: z.number().nonnegative(),
+  pricingKnown: z.boolean(),
+});
+export type AiCostEstimate = z.infer<typeof AiCostEstimateSchema>;
+
 export const AiInvestigationResultSchema = z.object({
   recordId: z.string(),
   runId: z.string(),
@@ -98,6 +109,8 @@ export const AiInvestigationResultSchema = z.object({
   recommendedAction: z.string().nullable().optional(),
   unavailableReason: z.string().nullable().optional(),
   toolTrace: z.array(ToolInvocationSchema).nullable().optional(),
+  modelDeploymentName: z.string().nullable().optional(),
+  costEstimate: AiCostEstimateSchema.nullable().optional(),
 });
 export type AiInvestigationResult = z.infer<typeof AiInvestigationResultSchema>;
 
@@ -358,9 +371,12 @@ export interface ConsensusResult {
     keySignals: string[] | null;
     recommendedAction: string | null;
     unavailableReason: string | null;
+    costEstimate: AiCostEstimate | null;
     toolTrace: ToolInvocation[] | null;
   }>;
   arbiter: ConsensusArbiter | null;
+  arbiterCostEstimate?: AiCostEstimate | null;
+  costEstimate?: AiCostEstimate | null;
 }
 
 export async function consensusInvestigate(runId: string, caseId: string, temperature?: number, allowConfidenceScores?: boolean): Promise<ConsensusResult> {
@@ -400,6 +416,7 @@ export interface DebateAgentResult {
   keySignals: string[] | null;
   recommendedAction: string | null;
   unavailableReason: string | null;
+  costEstimate?: AiCostEstimate | null;
   toolTrace: ToolInvocation[] | null;
 }
 
@@ -410,6 +427,8 @@ export interface DebateResult {
   fraudLeaning: DebateAgentResult;
   nonFraudLeaning: DebateAgentResult;
   arbiter: ConsensusArbiter | null;
+  arbiterCostEstimate?: AiCostEstimate | null;
+  costEstimate?: AiCostEstimate | null;
 }
 
 export async function debateInvestigate(
@@ -438,6 +457,7 @@ export interface JuniorResult {
   keySignals: string[] | null;
   recommendedAction: string | null;
   confidenceScore: number;
+  costEstimate?: AiCostEstimate | null;
   toolTrace: ToolInvocation[] | null;
 }
 
@@ -448,6 +468,7 @@ export interface SeniorResult {
   rationale: string | null;
   keySignals: string[] | null;
   recommendedAction: string | null;
+  costEstimate?: AiCostEstimate | null;
   toolTrace: ToolInvocation[] | null;
 }
 
@@ -457,6 +478,7 @@ export interface JuniorSeniorResult {
   confidenceScore: number;
   escalationThreshold: number;
   temperature: number | null;
+  costEstimate?: AiCostEstimate | null;
   junior: JuniorResult;
   senior: SeniorResult | null;
 }

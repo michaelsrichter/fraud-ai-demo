@@ -8,6 +8,7 @@ using Azure.Core;
 using FraudDemo.Application.Abstractions;
 using FraudDemo.Application.Configuration;
 using FraudDemo.Application.Dtos;
+using FraudDemo.Application.Services;
 using FraudDemo.Domain.Entities;
 using FraudDemo.Domain.Projections;
 using Microsoft.Agents.AI;
@@ -91,6 +92,7 @@ public sealed class AgentInvestigator : IAiInvestigator
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(ToolAugmentedTimeoutBudget);
         var sw = Stopwatch.StartNew();
+        long estimatedToolChars = 0;
 
         try
         {
@@ -164,6 +166,7 @@ public sealed class AgentInvestigator : IAiInvestigator
                         var result = _queryService.Query(run, query);
                         var resultJson = JsonSerializer.Serialize(result, JsonOptions);
                         var summary = $"{result.Metadata.TotalMatches} matches, {result.Metadata.ReturnedCount} returned ({result.Metadata.Mode} mode)";
+                        Interlocked.Add(ref estimatedToolChars, paramsJson.Length + resultJson.Length + summary.Length);
                         var truncatedData = resultJson.Length > 1000 ? resultJson[..1000] + "..." : resultJson;
 
                         toolSw.Stop();
@@ -177,6 +180,7 @@ public sealed class AgentInvestigator : IAiInvestigator
                     {
                         toolSw.Stop();
                         var errMsg = $"Error: {ex.Message}";
+                        Interlocked.Add(ref estimatedToolChars, errMsg.Length);
                         var errInv = new ToolInvocation("query_expense_data", "{}", errMsg, null, null, toolSw.ElapsedMilliseconds, false);
                         toolInvocations.Add(errInv);
                         progress?.Report(errInv);
@@ -198,7 +202,8 @@ public sealed class AgentInvestigator : IAiInvestigator
                 .UseFunctionInvocation()
                 .Build();
 
-            var agent = new ChatClientAgent(toolAwareChatClient, instructions: systemPromptOverride ?? PromptStore.SystemInvestigator);
+            var systemPrompt = systemPromptOverride ?? PromptStore.SystemInvestigator;
+            var agent = new ChatClientAgent(toolAwareChatClient, instructions: systemPrompt);
 
             var prompt = BuildPrompt(run, caseUnderReview);
             var toolNames = string.Join(", ", chatOptions.Tools!.Select(t => $"{t.GetType().Name}:{(t is AIFunction f ? f.Name : t.ToString())}"));
@@ -216,6 +221,13 @@ public sealed class AgentInvestigator : IAiInvestigator
                 return AiInvestigationResult.Unavailable(caseUnderReview.Expense.RecordId, run.RunId, requestedUtc, "malformed");
             }
 
+            var inputTokens =
+                AiCostEstimator.EstimateTokensFromText(systemPrompt)
+                + AiCostEstimator.EstimateTokensFromText(prompt)
+                + AiCostEstimator.EstimateTokensFromChars(estimatedToolChars);
+            var outputTokens = AiCostEstimator.EstimateTokensFromText(response.Text);
+            var costEstimate = AiCostEstimator.Estimate(deploymentName!, inputTokens, outputTokens);
+
             return AiInvestigationResult.Succeeded(
                 recordId: caseUnderReview.Expense.RecordId,
                 runId: run.RunId,
@@ -225,7 +237,9 @@ public sealed class AgentInvestigator : IAiInvestigator
                 rationale: dto.Rationale,
                 keySignals: dto.KeySignals,
                 recommendedAction: dto.RecommendedAction,
-                toolTrace: toolInvocations.Count > 0 ? toolInvocations : null);
+                toolTrace: toolInvocations.Count > 0 ? toolInvocations : null,
+                modelDeploymentName: deploymentName,
+                costEstimate: costEstimate);
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {

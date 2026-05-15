@@ -4,6 +4,7 @@ import { AVAILABLE_MODELS, debateInvestigate, getAllPrompts } from "../api/runsC
 import { ToolTracePanel } from "./ToolTracePanel";
 import { InvestigationProgress } from "./InvestigationProgress";
 import { PromptViewer } from "./PromptViewer";
+import { CostEstimateNote } from "./CostEstimateNote";
 
 interface Props {
   runId: string;
@@ -89,6 +90,7 @@ export function DebatePanel({ runId, caseId }: Props) {
 
       {debateResult && (
         <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12 }}>
+          <CostEstimateNote estimate={debateResult.costEstimate ?? null} />
           {/* Side-by-side debate agents */}
           <h3 style={{ fontSize: "0.95rem", margin: "0 0 12px" }}>Opposing Arguments</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12, marginBottom: 16 }}>
@@ -114,6 +116,7 @@ export function DebatePanel({ runId, caseId }: Props) {
                   {debateResult.fraudLeaning.rationale}
                 </p>
               )}
+              <CostEstimateNote estimate={debateResult.fraudLeaning.costEstimate ?? null} compact />
               {debateResult.fraudLeaning.keySignals && debateResult.fraudLeaning.keySignals.length > 0 && (
                 <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
                   {debateResult.fraudLeaning.keySignals.map((s, i) => <li key={i}>{s}</li>)}
@@ -147,6 +150,7 @@ export function DebatePanel({ runId, caseId }: Props) {
                   {debateResult.nonFraudLeaning.rationale}
                 </p>
               )}
+              <CostEstimateNote estimate={debateResult.nonFraudLeaning.costEstimate ?? null} compact />
               {debateResult.nonFraudLeaning.keySignals && debateResult.nonFraudLeaning.keySignals.length > 0 && (
                 <ul className="signals" style={{ fontSize: "0.7rem", margin: 0, paddingLeft: 16 }}>
                   {debateResult.nonFraudLeaning.keySignals.map((s, i) => <li key={i}>{s}</li>)}
@@ -202,6 +206,7 @@ export function DebatePanel({ runId, caseId }: Props) {
               <p className="muted" style={{ fontSize: "0.78rem", margin: 0, lineHeight: 1.6 }}>
                 {debateResult.arbiter.reasoning}
               </p>
+              <CostEstimateNote estimate={debateResult.arbiterCostEstimate ?? null} compact />
             </div>
           )}
 
