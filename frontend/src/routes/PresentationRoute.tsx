@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import stats from "../generated/stats.json";
 
 /* ── Slide data ── */
@@ -47,6 +47,45 @@ const SLIDES: Slide[] = [
 
 const S = {
   page: { maxWidth: 960, margin: "0 auto", padding: "0 24px 64px" } as const,
+  topPanel: {
+    marginTop: 20,
+    marginBottom: 16,
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    background: "var(--bg-surface)",
+    padding: "16px",
+  },
+  topPanelGrid: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
+    gap: 16,
+    alignItems: "center",
+  },
+  qrImage: {
+    width: 112,
+    height: 112,
+    borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "#fff",
+  },
+  anchorList: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: 8,
+    marginTop: 10,
+  },
+  anchorChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid var(--border)",
+    fontSize: "0.76rem",
+    textDecoration: "none",
+    color: "var(--text-muted)",
+    background: "var(--bg)",
+    cursor: "pointer",
+  },
   slide: {
     minHeight: "70vh",
     display: "flex",
@@ -154,14 +193,127 @@ const S = {
 
 export function PresentationRoute() {
   const [tocOpen, setTocOpen] = useState(false);
+  const [activeSlideId, setActiveSlideId] = useState(SLIDES[0]?.id ?? "title");
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const presentationUrl = "https://fraudai.mikerichter.app/";
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(presentationUrl)}`;
+
+  const scrollTo = (id: string, updateHash = true) => {
+    const target = document.getElementById(id);
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    setActiveSlideId(id);
+
+    if (updateHash && window.location.hash !== `#${id}`) {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+
     setTocOpen(false);
   };
 
+  useEffect(() => {
+    const hashId = decodeURIComponent(window.location.hash.replace("#", ""));
+    if (hashId && SLIDES.some((s) => s.id === hashId)) {
+      window.requestAnimationFrame(() => scrollTo(hashId, false));
+    }
+
+    const onHashChange = () => {
+      const nextHashId = decodeURIComponent(window.location.hash.replace("#", ""));
+      if (nextHashId && SLIDES.some((s) => s.id === nextHashId)) {
+        scrollTo(nextHashId, false);
+      }
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visible) {
+          return;
+        }
+
+        const id = visible.target.id;
+        if (id && id !== activeSlideId) {
+          setActiveSlideId(id);
+          if (window.location.hash !== `#${id}`) {
+            window.history.replaceState(null, "", `#${id}`);
+          }
+        }
+      },
+      {
+        root: null,
+        threshold: [0.45, 0.65],
+        rootMargin: "-15% 0px -15% 0px",
+      }
+    );
+
+    SLIDES.forEach((slide) => {
+      const element = document.getElementById(slide.id);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [activeSlideId]);
+
+  const activeSlideIndex = SLIDES.findIndex((slide) => slide.id === activeSlideId);
+  const prevSlide = activeSlideIndex > 0 ? SLIDES[activeSlideIndex - 1] : null;
+  const nextSlide = activeSlideIndex >= 0 && activeSlideIndex < SLIDES.length - 1
+    ? SLIDES[activeSlideIndex + 1]
+    : null;
+
   return (
     <div style={S.page}>
+      <section style={S.topPanel}>
+        <div style={S.topPanelGrid}>
+          <a href={presentationUrl} target="_blank" rel="noopener noreferrer" aria-label="Open live website">
+            <img src={qrUrl} alt="QR code for fraudai.mikerichter.app" style={S.qrImage} />
+          </a>
+          <div>
+            <p style={{ ...S.tag, marginBottom: 10 }}>Live Demo Link</p>
+            <h2 style={{ ...S.h2, marginBottom: 8 }}>Scan To Open The App</h2>
+            <a
+              href={presentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--link)", fontSize: "0.9rem", wordBreak: "break-all" as const }}
+            >
+              {presentationUrl}
+            </a>
+            <div style={S.anchorList}>
+              {SLIDES.map((slide) => (
+                <a
+                  key={`anchor-${slide.id}`}
+                  href={`#${slide.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollTo(slide.id);
+                  }}
+                  style={{
+                    ...S.anchorChip,
+                    color: activeSlideId === slide.id ? "var(--text)" : "var(--text-muted)",
+                    borderColor: activeSlideId === slide.id ? "var(--link)" : "var(--border)",
+                  }}
+                >
+                  {slide.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Floating TOC toggle */}
       <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 100 }}>
         {tocOpen && (
@@ -176,21 +328,25 @@ export function PresentationRoute() {
             }}
           >
             {SLIDES.map((s) => (
-              <div
+              <button
                 key={s.id}
                 onClick={() => scrollTo(s.id)}
                 style={{
+                  width: "100%",
+                  textAlign: "left",
                   padding: "4px 8px",
                   fontSize: "0.78rem",
                   cursor: "pointer",
                   borderRadius: 4,
+                  border: "none",
+                  background: "transparent",
                   color: "var(--text-muted)",
                 }}
                 onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
                 onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
               >
                 {s.label}
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -209,6 +365,42 @@ export function PresentationRoute() {
           title="Slide navigation"
         >
           {tocOpen ? "✕" : "☰"}
+        </button>
+      </div>
+
+      <div
+        className="panel"
+        style={{
+          position: "fixed",
+          left: 24,
+          bottom: 24,
+          zIndex: 99,
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <button
+          className="secondary"
+          onClick={() => prevSlide && scrollTo(prevSlide.id)}
+          disabled={!prevSlide}
+          style={{ padding: "6px 10px", fontSize: "0.8rem" }}
+          aria-label="Go to previous slide"
+        >
+          Prev
+        </button>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", minWidth: 130 }}>
+          {activeSlideIndex + 1} / {SLIDES.length}: {SLIDES[activeSlideIndex]?.label}
+        </span>
+        <button
+          className="secondary"
+          onClick={() => nextSlide && scrollTo(nextSlide.id)}
+          disabled={!nextSlide}
+          style={{ padding: "6px 10px", fontSize: "0.8rem" }}
+          aria-label="Go to next slide"
+        >
+          Next
         </button>
       </div>
 
