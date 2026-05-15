@@ -490,7 +490,7 @@ export function PresentationRoute() {
         <p style={{ ...S.sub, maxWidth: 600, margin: "0 auto 24px" }}>
           Let's look at the actual application before we dive into the lessons.
         </p>
-        <Link to="/labs/expenses">
+        <Link to="/labs/expenses" target="_blank" rel="noopener noreferrer">
           <button style={{ padding: "16px 36px", fontSize: "1.1rem", fontWeight: 600 }}>
             ⚡ Launch the Expense Fraud Lab
           </button>
@@ -589,6 +589,18 @@ if (rng.NextDouble() < 0.25)
       {/* ── Process ── */}
       <section id="process" style={S.slideCompact}>
         <h3 style={S.h3}>The Process: Spec → Plan → Tasks → Code</h3>
+        <p style={{ ...S.body, marginBottom: 8 }}>
+          First spec document:
+          {" "}
+          <a
+            href="https://github.com/michaelsrichter/fraud-ai-demo/blob/main/specs/001-expense-fraud-demo/spec.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--link)" }}
+          >
+            specs/001-expense-fraud-demo/spec.md
+          </a>
+        </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginTop: 16 }}>
           <ProcessCard step="1" title="Specify" items={["User stories", "Edge cases", "Requirements"]} />
           <ProcessCard step="2" title="Plan" items={["Architecture", "Data models", "API design"]} />
@@ -722,8 +734,8 @@ if (rng.NextDouble() < 0.25)
       <section id="ml-vs-ai" style={S.slideCompact}>
         <h3 style={S.h3}>Two Different Tools for Two Different Jobs</h3>
         <p style={S.body}>
-          Fraud detection is fundamentally about finding anomalies. Traditional ML models
-          are purpose-built for exactly this — and they do it fast and cheap.
+          Anomalies are a big part of detecting fraud, and traditional ML models
+          are purpose-built to find those patterns quickly and cost-effectively.
         </p>
 
         {/* Comparison table */}
@@ -1209,13 +1221,13 @@ assignments = [
         </div>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link to="/labs/expenses">
+          <Link to="/labs/expenses" target="_blank" rel="noopener noreferrer">
             <button style={{ padding: "14px 28px", fontSize: "1rem" }}>⚡ Live Demo</button>
           </Link>
           <a href="https://github.com/michaelsrichter/fraud-ai-demo" target="_blank" rel="noopener noreferrer">
             <button className="secondary" style={{ padding: "14px 28px", fontSize: "1rem" }}>📦 Source Code</button>
           </a>
-          <Link to="/story">
+          <Link to="/story" target="_blank" rel="noopener noreferrer">
             <button className="secondary" style={{ padding: "14px 28px", fontSize: "1rem" }}>📖 Build Story</button>
           </Link>
         </div>
